@@ -14,7 +14,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import ar.edu.uade.go2rondas.core.navigation.Screen
 import ar.edu.uade.go2rondas.presentation.common.LocalSnackbarHostState
+import ar.edu.uade.go2rondas.presentation.panel.PanelScreen
 import ar.edu.uade.go2rondas.presentation.robotselection.RobotSelectionScreen
+import ar.edu.uade.go2rondas.presentation.telemetry.TelemetryScreen
 
 @Composable
 fun Go2RondasApp() {
@@ -33,7 +35,13 @@ fun Go2RondasApp() {
                 modifier = Modifier.padding(padding)
             ) {
                 composable(Screen.RobotSelection.route) {
-                    RobotSelectionScreen(onOpenPanel = {})
+                    RobotSelectionScreen(onOpenPanel = { navController.navigate(Screen.Panel.route) })
+                }
+                composable(Screen.Panel.route) {
+                    PanelScreen(onOpenTelemetry = { navController.navigate(Screen.Telemetry.route) })
+                }
+                composable(Screen.Telemetry.route) {
+                    TelemetryScreen(onBack = { navController.popBackStack() })
                 }
             }
         }
