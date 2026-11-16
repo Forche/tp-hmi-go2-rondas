@@ -12,6 +12,7 @@ import ar.edu.uade.go2rondas.domain.model.Command
 import ar.edu.uade.go2rondas.domain.model.CommandOutcome
 import ar.edu.uade.go2rondas.domain.model.EnvironmentReading
 import ar.edu.uade.go2rondas.domain.model.IncidentDecision
+import ar.edu.uade.go2rondas.domain.model.Level
 import ar.edu.uade.go2rondas.domain.model.LinkQuality
 import ar.edu.uade.go2rondas.domain.model.MissionProgress
 import ar.edu.uade.go2rondas.domain.model.MissionResult
@@ -484,6 +485,8 @@ class RobotSimulator(
     fun drainEvents(): List<RobotEvent> = pendingEvents.toList().also { pendingEvents.clear() }
 
     fun alerts(): List<Alert> = alerts.toList()
+
+    fun currentLevel(): Level = DataCenterSite.levelAt(if (state == AT_BASE) site.base else route.pointAt(distance))
 
     fun telemetry(link: LinkQuality): Telemetry {
         sequence++
