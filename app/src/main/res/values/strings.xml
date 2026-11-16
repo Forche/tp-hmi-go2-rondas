@@ -140,6 +140,7 @@
     <string name="panel_returning">Regresando a la base</string>
     <string name="panel_no_mission">Sin ronda activa</string>
     <string name="panel_see_telemetry">Ver toda la telemetría</string>
+    <string name="panel_choose_mission">Elegir misión</string>
 
     <!-- Telemetría -->
     <string name="telemetry_title">Telemetría</string>
@@ -181,6 +182,32 @@
     <string name="value_humidity_detail">rango %1$.0f–%2$.0f %%</string>
     <string name="value_noise">%1$.0f dB(A)</string>
     <string name="value_noise_detail">línea base %1$.0f dB(A)</string>
+
+    <!-- Misiones -->
+    <string name="missions_title">Misiones</string>
+    <string name="missions_choose">Elegí una misión</string>
+    <string name="missions_route">Recorrido de la misión</string>
+    <string name="missions_spot_checkpoint">Checkpoint a inspeccionar</string>
+    <string name="missions_continue">Continuar</string>
+    <string name="confirm_title">Iniciar «%1$s»</string>
+    <string name="confirm_subtitle">La app verifica las condiciones antes de enviar la orden.</string>
+    <string name="check_at_base">Robot en base</string>
+    <string name="check_connected">Conectado</string>
+    <string name="check_connected_latency">Conectado · %1$d ms</string>
+    <string name="check_battery">Batería %1$d %% (mínimo %2$d %%)</string>
+    <string name="check_no_critical">Sin alertas críticas sin reconocer</string>
+    <string name="check_no_pending">Sin otra orden pendiente</string>
+    <string name="action_cancel">Cancelar</string>
+
+    <!-- Avisos -->
+    <string name="msg_command_rejected">%1$s: rechazada (%2$s)</string>
+    <string name="msg_command_no_response">%1$s: sin respuesta. La orden no se reenvía sola.</string>
+
+    <!-- Navegación -->
+    <string name="nav_panel">Panel</string>
+    <string name="nav_missions">Misiones</string>
+    <string name="nav_alerts">Alertas</string>
+    <string name="nav_history">Historial</string>
 
     <!-- Comunes -->
     <string name="cd_back">Volver</string>
