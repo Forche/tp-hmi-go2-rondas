@@ -1,4 +1,133 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Go2 Rondas</string>
+
+    <!-- Estado operativo -->
+    <string name="state_at_base">En base</string>
+    <string name="state_on_mission">En ronda</string>
+    <string name="state_paused">Pausado</string>
+    <string name="state_awaiting_decision">Esperando decisión</string>
+    <string name="state_returning">Regresando</string>
+    <string name="state_stopped">Detenido</string>
+    <string name="state_no_connection">Sin conexión</string>
+
+    <!-- Conexión -->
+    <string name="link_connected">Conectado</string>
+    <string name="link_degraded">Señal débil</string>
+    <string name="link_disconnected">Sin conexión</string>
+    <string name="updated_seconds_ago">Actualizado hace %1$d s</string>
+    <string name="last_data_seconds_ago">Último dato hace %1$d s</string>
+    <string name="banner_disconnected_title">Sin conexión con el robot</string>
+    <string name="banner_disconnected_detail">Último dato hace %1$d s · reintentando conexión</string>
+    <string name="banner_waiting_first_data">Esperando el primer dato del robot</string>
+    <string name="battery_percent">%1$d %%</string>
+    <string name="cd_battery">Batería</string>
+
+    <!-- Órdenes -->
+    <string name="command_start">Iniciar ronda</string>
+    <string name="command_pause">Pausar</string>
+    <string name="command_resume">Reanudar</string>
+    <string name="command_cancel">Cancelar misión</string>
+    <string name="command_return">Volver a base</string>
+    <string name="command_stop">Detención operativa</string>
+    <string name="command_acknowledge">Reconocer alerta</string>
+    <string name="command_decide">Decisión ante incidente</string>
+    <string name="command_status_pending">pendiente…</string>
+    <string name="command_status_confirmed">confirmada</string>
+    <string name="command_status_rejected">rechazada</string>
+    <string name="command_status_no_response">sin respuesta</string>
+    <string name="hold_to_stop">Mantener 2 s para detener</string>
+    <string name="hold_to_stop_pressing">Deteniendo… soltá para cancelar</string>
+    <string name="hold_to_stop_disabled">Detención no disponible</string>
+
+    <!-- Motivo por el que una orden está deshabilitada -->
+    <string name="reason_no_telemetry">Todavía no llegaron datos del robot</string>
+    <string name="reason_not_connected">Sin conexión con el robot</string>
+    <string name="reason_command_pending">Hay otra orden pendiente de respuesta</string>
+    <string name="reason_not_at_base">El robot no está en la base</string>
+    <string name="reason_battery_too_low">La batería está por debajo del mínimo para salir</string>
+    <string name="reason_unacknowledged_critical">Hay una alerta crítica sin reconocer</string>
+    <string name="reason_not_on_mission">Sólo se puede durante una ronda</string>
+    <string name="reason_not_paused">Se habilita cuando la ronda está pausada o detenida</string>
+    <string name="reason_no_active_mission">No hay una ronda activa</string>
+    <string name="reason_already_at_base">El robot ya está en la base</string>
+    <string name="reason_already_returning">El robot ya está regresando</string>
+    <string name="reason_already_stopped">El robot ya está detenido</string>
+    <string name="reason_no_alerts">No hay alertas para reconocer</string>
+    <string name="reason_no_decision">El robot no espera ninguna decisión</string>
+    <string name="reason_alert_not_acknowledged">Primero reconocé la alerta</string>
+
+    <!-- Motivo de rechazo informado por el robot -->
+    <string name="rejection_low_battery">batería insuficiente</string>
+    <string name="rejection_not_at_base">el robot no está en la base</string>
+    <string name="rejection_no_active_mission">no hay ronda activa</string>
+    <string name="rejection_invalid_state">no aplica en el estado actual</string>
+    <string name="rejection_on_stairs">el robot está en la escalera</string>
+    <string name="rejection_obstacle_persists">obstáculo persistente</string>
+    <string name="rejection_alert_not_found">la alerta ya no está activa</string>
+    <string name="rejection_simulated">rechazo simulado</string>
+    <string name="rejection_reason">Motivo: %1$s</string>
+
+    <!-- Alertas -->
+    <string name="alert_severity_info">Info</string>
+    <string name="alert_severity_warning">Advertencia</string>
+    <string name="alert_severity_critical">Crítica</string>
+    <string name="alert_obstacle">Obstáculo en el recorrido</string>
+    <string name="alert_temperature_high">Temperatura alta</string>
+    <string name="alert_humidity">Humedad fuera de rango</string>
+    <string name="alert_noise">Ruido anómalo</string>
+    <string name="alert_battery_low">Batería baja</string>
+    <string name="alert_battery_critical">Batería crítica</string>
+    <string name="alert_unacknowledged">Sin reconocer</string>
+    <string name="alert_acknowledged">Reconocida</string>
+    <string name="alert_detail_obstacle">Antes de %1$s · el robot se detuvo</string>
+    <string name="alert_detail_temperature">%1$s · %2$.1f °C (umbral %3$.0f °C)</string>
+    <string name="alert_detail_humidity">%1$s · %2$.0f %% (umbral %3$.0f %%)</string>
+    <string name="alert_detail_noise">%1$s · %2$.0f dB(A) (umbral %3$.0f dB(A))</string>
+    <string name="alert_detail_battery">%1$.0f %% (umbral %2$.0f %%)</string>
+    <string name="decision_continue">Continuar</string>
+    <string name="decision_skip">Saltear %1$s</string>
+    <string name="decision_retry">Reintentar</string>
+    <string name="decision_watch">Quedarse vigilando</string>
+
+    <!-- Checkpoints -->
+    <string name="checkpoint_label">%1$s · %2$s</string>
+    <string name="checkpoint_pending">Pendiente</string>
+    <string name="checkpoint_current">En curso</string>
+    <string name="checkpoint_ok">OK</string>
+    <string name="checkpoint_anomaly">Anomalía</string>
+    <string name="checkpoint_skipped">Salteado</string>
+    <string name="checkpoint_reading">%1$.1f °C · %2$.0f %% · %3$.0f dB</string>
+    <string name="checkpoint_skipped_detail">No inspeccionado</string>
+    <string name="map_base">Base</string>
+    <string name="cd_site_map">Plano del data center con los checkpoints y la posición del robot</string>
+
+    <!-- Misiones -->
+    <string name="mission_full_round">Ronda completa</string>
+    <string name="mission_ground_floor_round">Ronda planta baja</string>
+    <string name="mission_spot_check">Inspección puntual</string>
+    <string name="mission_full_round_detail">CP1 a CP8 · planta baja y subsuelo</string>
+    <string name="mission_ground_floor_round_detail">CP1 a CP5 · si la escalera no está disponible</string>
+    <string name="mission_spot_check_detail">Un checkpoint a elección</string>
+    <string name="result_completed">Completada</string>
+    <string name="result_interrupted">Interrumpida</string>
+    <string name="result_cancelled">Cancelada</string>
+    <string name="result_in_progress">En curso</string>
+    <string name="history_row_detail">%1$s · %2$d/%3$d checkpoints</string>
+    <string name="history_no_anomalies">sin anomalías</string>
+    <string name="history_anomalies">%1$d con anomalía</string>
+    <string name="history_skipped">%1$d salteado(s)</string>
+
+    <!-- Robots -->
+    <string name="robot_source_local">Simulador local · sin red</string>
+    <string name="robot_source_mujoco">Servidor MuJoCo · %1$s</string>
+    <string name="robot_battery">Batería %1$d %%</string>
+    <string name="robot_battery_unknown">Batería —</string>
+    <string name="robot_subtitle">%1$s · %2$s</string>
+    <string name="robot_subtitle_local">simulador local</string>
+    <string name="robot_subtitle_mujoco">servidor MuJoCo</string>
+
+    <!-- Comunes -->
+    <string name="cd_back">Volver</string>
+    <string name="cd_open">Abrir</string>
 </resources>
