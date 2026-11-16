@@ -134,7 +134,56 @@
     <string name="robots_mujoco_note">Go2-02 necesita el servidor MuJoCo encendido en la misma red Wi-Fi.</string>
     <string name="robot_avatar">Go2</string>
 
+    <!-- Panel -->
+    <string name="panel_title">Panel</string>
+    <string name="panel_progress">Checkpoint %1$d de %2$d · %3$s</string>
+    <string name="panel_returning">Regresando a la base</string>
+    <string name="panel_no_mission">Sin ronda activa</string>
+    <string name="panel_see_telemetry">Ver toda la telemetría</string>
+
+    <!-- Telemetría -->
+    <string name="telemetry_title">Telemetría</string>
+    <string name="telemetry_mandatory">Datos obligatorios</string>
+    <string name="telemetry_service">Datos del servicio · última lectura en %1$s</string>
+    <string name="telemetry_service_no_reading">Datos del servicio · todavía sin lecturas</string>
+    <string name="tel_connectivity">Conectividad</string>
+    <string name="tel_battery">Batería</string>
+    <string name="tel_state">Estado</string>
+    <string name="tel_mission">Misión</string>
+    <string name="tel_location">Ubicación</string>
+    <string name="tel_motion">Movimiento</string>
+    <string name="tel_alerts">Alertas</string>
+    <string name="tel_last_update">Última act.</string>
+    <string name="tel_temperature">Temperatura</string>
+    <string name="tel_humidity">Humedad</string>
+    <string name="tel_noise">Ruido</string>
+    <string name="value_dash">—</string>
+    <string name="value_latency">%1$d ms</string>
+    <string name="value_rssi">Wi-Fi %1$d dBm</string>
+    <string name="value_autonomy">≈ %1$d h %2$02d min</string>
+    <string name="value_charging">cargando · ≈ %1$d h %2$02d min</string>
+    <string name="value_mission">%1$d / %2$d</string>
+    <string name="value_mission_detail">%1$s · %2$s</string>
+    <string name="value_no_mission">sin ronda activa</string>
+    <string name="value_segment">%1$s → %2$s</string>
+    <string name="value_location_detail">%1$s · confianza %2$d %%</string>
+    <string name="level_ground_floor">Planta baja</string>
+    <string name="level_basement">Subsuelo</string>
+    <string name="value_speed">%1$.2f m/s</string>
+    <string name="value_heading">rumbo %1$d°</string>
+    <string name="value_stopped">detenido</string>
+    <string name="value_alerts_none">sin alertas activas</string>
+    <string name="value_alerts_unacknowledged">%1$d sin reconocer</string>
+    <string name="value_seconds_ago">hace %1$d s</string>
+    <string name="value_temperature">%1$.1f °C</string>
+    <string name="value_temperature_detail">%1$s · umbral %2$.0f °C</string>
+    <string name="value_humidity">%1$.0f %%</string>
+    <string name="value_humidity_detail">rango %1$.0f–%2$.0f %%</string>
+    <string name="value_noise">%1$.0f dB(A)</string>
+    <string name="value_noise_detail">línea base %1$.0f dB(A)</string>
+
     <!-- Comunes -->
     <string name="cd_back">Volver</string>
+    <string name="error_loading">No se pudo cargar: %1$s</string>
     <string name="cd_open">Abrir</string>
 </resources>
