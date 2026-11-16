@@ -1,6 +1,11 @@
 package ar.edu.uade.go2rondas.data.repository
 
+import android.database.sqlite.SQLiteException
+import android.util.Log
 import ar.edu.uade.go2rondas.core.coroutines.ApplicationScope
+import ar.edu.uade.go2rondas.data.local.HistoryLocalDataSource
+import ar.edu.uade.go2rondas.data.mapper.newMissionEntity
+import ar.edu.uade.go2rondas.data.mapper.toEntity
 import ar.edu.uade.go2rondas.data.sim.DataCenterSite
 import ar.edu.uade.go2rondas.data.sim.SimulatedRobotDataSource
 import ar.edu.uade.go2rondas.data.source.RobotDataSource
@@ -10,8 +15,10 @@ import ar.edu.uade.go2rondas.domain.model.CommandOutcome
 import ar.edu.uade.go2rondas.domain.model.CommandRecord
 import ar.edu.uade.go2rondas.domain.model.CommandStatus
 import ar.edu.uade.go2rondas.domain.model.ConnectionStatus
+import ar.edu.uade.go2rondas.domain.model.HistoryEvent
 import ar.edu.uade.go2rondas.domain.model.LinkState
 import ar.edu.uade.go2rondas.domain.model.Robot
+import ar.edu.uade.go2rondas.domain.model.RobotEvent
 import ar.edu.uade.go2rondas.domain.model.RobotSource
 import ar.edu.uade.go2rondas.domain.model.SiteConfig
 import ar.edu.uade.go2rondas.domain.model.Telemetry
@@ -37,6 +44,7 @@ import javax.inject.Singleton
 @Singleton
 class RobotRepositoryImpl @Inject constructor(
     private val simulator: SimulatedRobotDataSource,
+    private val history: HistoryLocalDataSource,
     @param:ApplicationScope private val scope: CoroutineScope
 ) : RobotRepository {
 
@@ -71,6 +79,10 @@ class RobotRepositoryImpl @Inject constructor(
             .distinctUntilChanged()
             .stateIn(scope, SharingStarted.Eagerly, ConnectionStatus.Disconnected)
 
+    init {
+        scope.launch { recordConnectionChanges() }
+    }
+
     override fun getAvailableRobots(): List<Robot> = robots
 
     override fun observeActiveRobot(): Flow<Robot?> = activeRobot.asStateFlow()
@@ -98,6 +110,7 @@ class RobotRepositoryImpl @Inject constructor(
                 }
             }
             launch { source.alerts.collect { alerts.value = it } }
+            launch { source.events.collect { record(it, robot.id) } }
         }
     }
 
@@ -132,14 +145,71 @@ class RobotRepositoryImpl @Inject constructor(
         } else {
             withTimeoutOrNull(timeoutMillis) { source.send(command) } ?: CommandOutcome.NoResponse
         }
-        lastCommand.value = CommandRecord(
+        val record = CommandRecord(
             command = command,
             status = outcome.toStatus(),
             sentAtMillis = sentAt,
             rejectionReason = (outcome as? CommandOutcome.Rejected)?.reason
         )
+        lastCommand.value = record
+        saveEvent(
+            HistoryEvent.CommandSent(sentAt, command.type, record.status, record.rejectionReason),
+            telemetry.value?.mission?.missionId
+        )
         outcome
     }.await()
+
+    // ---------------------------------------------------------------- historial
+
+    private suspend fun record(event: RobotEvent, robotId: String) = safely {
+        when (event) {
+            is RobotEvent.MissionStarted -> history.insertMission(
+                newMissionEntity(event.missionId, robotId, event.type, event.total, event.timestampMillis)
+            )
+            is RobotEvent.CheckpointInspected -> history.insertCheckpointResult(event.result.toEntity())
+            is RobotEvent.AlertRaised -> saveEvent(
+                HistoryEvent.AlertRaised(event.timestampMillis, event.alert.code, event.alert.severity, event.alert.checkpointId),
+                event.missionId
+            )
+            is RobotEvent.MissionFinished -> {
+                if (!history.finishMission(event.missionId, event.timestampMillis, event.result.name)) {
+                    Log.w(TAG, "Fin de una ronda que no estaba registrada: ${event.missionId}")
+                }
+            }
+        }
+    }
+
+    /** Registra el inicio y el fin de cada corte de conexión, con su duración. */
+    private suspend fun recordConnectionChanges() {
+        var lostAt: Long? = null
+        connection.collect { status ->
+            val missionId = telemetry.value?.mission?.missionId
+            val lastUpdate = status.lastUpdateMillis
+            if (status.state == LinkState.DISCONNECTED && lastUpdate != null && lostAt == null) {
+                lostAt = lastUpdate
+                saveEvent(HistoryEvent.ConnectionLost(lastUpdate), missionId)
+            } else if (status.state != LinkState.DISCONNECTED) {
+                lostAt?.let { since ->
+                    val now = System.currentTimeMillis()
+                    saveEvent(HistoryEvent.ConnectionRestored(now, (now - since) / 1_000), missionId)
+                }
+                lostAt = null
+            }
+        }
+    }
+
+    private suspend fun saveEvent(event: HistoryEvent, missionId: String?) = safely {
+        history.insertEvent(event.toEntity(missionId))
+    }
+
+    /** Un error al guardar el historial no debe cortar la telemetría ni las órdenes. */
+    private suspend fun safely(block: suspend () -> Unit) {
+        try {
+            block()
+        } catch (e: SQLiteException) {
+            Log.e(TAG, "No se pudo guardar en el historial", e)
+        }
+    }
 
     private fun connectionStatus(now: Long, lastAt: Long?, current: Telemetry?): ConnectionStatus {
         if (lastAt == null) return ConnectionStatus.Disconnected
@@ -160,6 +230,7 @@ class RobotRepositoryImpl @Inject constructor(
     }
 
     private companion object {
+        const val TAG = "RobotRepository"
         const val DEGRADED_AGE_MILLIS = 2_500L
     }
 }
