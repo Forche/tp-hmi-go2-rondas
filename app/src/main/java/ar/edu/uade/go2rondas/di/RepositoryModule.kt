@@ -1,7 +1,9 @@
 package ar.edu.uade.go2rondas.di
 
+import ar.edu.uade.go2rondas.data.repository.HistoryRepositoryImpl
 import ar.edu.uade.go2rondas.data.repository.RobotRepositoryImpl
 import ar.edu.uade.go2rondas.data.repository.SimulationRepositoryImpl
+import ar.edu.uade.go2rondas.domain.repository.HistoryRepository
 import ar.edu.uade.go2rondas.domain.repository.RobotRepository
 import ar.edu.uade.go2rondas.domain.repository.SimulationRepository
 import dagger.Binds
@@ -21,4 +23,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindSimulationRepository(impl: SimulationRepositoryImpl): SimulationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindHistoryRepository(impl: HistoryRepositoryImpl): HistoryRepository
 }
