@@ -26,6 +26,8 @@ data class MissionProgress(
     val missionId: String,
     val type: MissionType,
     val currentCheckpointId: String?,
+    /** Posición del checkpoint actual dentro de la ronda, desde 1. */
+    val currentPosition: Int,
     val completed: Int,
     val total: Int,
     val elapsedSeconds: Long
