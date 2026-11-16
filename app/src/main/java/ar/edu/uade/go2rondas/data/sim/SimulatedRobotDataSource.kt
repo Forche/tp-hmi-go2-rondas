@@ -38,7 +38,7 @@ import kotlin.random.Random
  */
 @Singleton
 class SimulatedRobotDataSource @Inject constructor(
-    @ApplicationScope private val scope: CoroutineScope
+    @param:ApplicationScope private val scope: CoroutineScope
 ) : RobotDataSource {
 
     private val site = DataCenterSite.config
