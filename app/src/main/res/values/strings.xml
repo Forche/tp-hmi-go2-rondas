@@ -127,6 +127,13 @@
     <string name="robot_subtitle_local">simulador local</string>
     <string name="robot_subtitle_mujoco">servidor MuJoCo</string>
 
+    <!-- Selección de robot -->
+    <string name="robots_title">Elegí un robot</string>
+    <string name="robots_subtitle">Robots configurados en este dispositivo</string>
+    <string name="robots_available">Disponibles</string>
+    <string name="robots_mujoco_note">Go2-02 necesita el servidor MuJoCo encendido en la misma red Wi-Fi.</string>
+    <string name="robot_avatar">Go2</string>
+
     <!-- Comunes -->
     <string name="cd_back">Volver</string>
     <string name="cd_open">Abrir</string>
