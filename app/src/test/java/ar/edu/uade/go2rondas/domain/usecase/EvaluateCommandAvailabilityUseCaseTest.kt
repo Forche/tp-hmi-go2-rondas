@@ -42,7 +42,7 @@ class EvaluateCommandAvailabilityUseCaseTest {
         link = LinkQuality(85, -61),
         battery = Battery(battery, charging = false, estimatedMinutes = 180),
         state = state,
-        mission = if (onMission) MissionProgress("m-1", MissionType.FULL_ROUND, "CP3", 2, 8, 360) else null,
+        mission = if (onMission) MissionProgress("m-1", MissionType.FULL_ROUND, "CP3", 3, 2, 8, 360) else null,
         location = RobotLocation(Level.GROUND_FLOOR, "CP2", "CP3", PlanPoint(0f, 0f), 180, 0.93),
         motion = Motion(0.4, moving = true),
         activeAlerts = 0,
