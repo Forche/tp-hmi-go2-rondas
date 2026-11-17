@@ -3,7 +3,12 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.kotlin.serialization)
 }
+
+// Dirección del servidor MuJoCo. 10.0.2.2 es la PC vista desde el emulador; para un celular:
+// ./gradlew assembleDebug -Pgo2.mujocoAddress=192.168.0.20:8765
+val mujocoAddress = providers.gradleProperty("go2.mujocoAddress").getOrElse("10.0.2.2:8765")
 
 android {
     namespace = "ar.edu.uade.go2rondas"
@@ -17,6 +22,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+        buildConfigField("String", "MUJOCO_SERVER_ADDRESS", "\"$mujocoAddress\"")
     }
 
     buildTypes {
@@ -32,6 +38,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -58,6 +65,8 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+    implementation(libs.okhttp)
+    implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.junit)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

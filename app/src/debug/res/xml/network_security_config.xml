@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  El servidor MuJoCo corre en una PC de la red local y no tiene certificado, así que usa ws:// sin cifrar.
+  Esto sólo aplica a la build de debug; una instalación real usaría wss:// con certificado.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

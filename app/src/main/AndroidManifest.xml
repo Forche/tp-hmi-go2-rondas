@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Sólo para el robot Go2-02 (servidor MuJoCo en la red local). El simulador local no usa red. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:name=".Go2RondasApplication"
         android:allowBackup="true"
