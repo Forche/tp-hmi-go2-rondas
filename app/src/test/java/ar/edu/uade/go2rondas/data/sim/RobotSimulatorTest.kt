@@ -101,6 +101,26 @@ class RobotSimulatorTest {
     }
 
     @Test
+    fun `without battery to come back the robot does not go down to the basement`() {
+        startFullRound()
+        runUntil { inspected().size == 5 }
+        simulator.trigger(SimulationScenario.LOW_BATTERY)
+        runUntil { simulator.state == OperationalState.AT_BASE }
+
+        assertTrue(AlertCode.BATTERY_INSUFFICIENT_FOR_BASEMENT in simulator.alerts().map { it.code })
+        assertEquals(listOf("CP1", "CP2", "CP3", "CP4", "CP5"), inspected().map { it.checkpointId })
+        assertEquals(MissionResult.INTERRUPTED_LOW_BATTERY, finished().result)
+    }
+
+    @Test
+    fun `with enough battery the robot goes down to the basement`() {
+        startFullRound()
+        runUntil { simulator.state == OperationalState.AT_BASE }
+
+        assertTrue(simulator.alerts().none { it.code == AlertCode.BATTERY_INSUFFICIENT_FOR_BASEMENT })
+    }
+
+    @Test
     fun `without link the robot finishes the checkpoint and waits`() {
         startFullRound()
         simulator.setLinkAvailable(false)

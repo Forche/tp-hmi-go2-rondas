@@ -1,5 +1,10 @@
 package ar.edu.uade.go2rondas.presentation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.WindowInsets
@@ -13,11 +18,15 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -38,6 +47,7 @@ import ar.edu.uade.go2rondas.presentation.panel.PanelScreen
 import ar.edu.uade.go2rondas.presentation.robotselection.RobotSelectionScreen
 import ar.edu.uade.go2rondas.presentation.simulator.SimulatorScreen
 import ar.edu.uade.go2rondas.presentation.telemetry.TelemetryScreen
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /** Pestañas de la barra inferior. */
 enum class AppTab(val screen: Screen, @param:StringRes val label: Int, @param:DrawableRes val icon: Int) {
@@ -65,11 +75,21 @@ private fun NavHostController.openTab(tab: AppTab) {
 }
 
 @Composable
-fun Go2RondasApp() {
+fun Go2RondasApp(alertToOpen: MutableStateFlow<String?>) {
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+
+    RequestNotificationPermission()
+    // Notificación tocada: abre el detalle de esa alerta si ya hay un robot elegido.
+    val pendingAlert by alertToOpen.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingAlert, currentRoute) {
+        val alertId = pendingAlert ?: return@LaunchedEffect
+        if (currentRoute == null || currentRoute == Screen.RobotSelection.route) return@LaunchedEffect
+        alertToOpen.value = null
+        navController.navigate(Screen.AlertDetail.createRoute(alertId))
+    }
 
     CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
         Scaffold(
@@ -157,5 +177,18 @@ fun Go2RondasApp() {
                 }
             }
         }
+    }
+}
+
+/** En Android 13 o más, las notificaciones necesitan permiso. Se pide una vez, al abrir la app. */
+@Composable
+private fun RequestNotificationPermission() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    LaunchedEffect(Unit) {
+        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        if (!granted) launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }

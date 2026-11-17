@@ -104,6 +104,7 @@ private fun SummaryBody(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(missionSummaryText(record, includeDate = false), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            record.nextStepRes()?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyMedium) }
         }
 
         SectionTitle(stringResource(R.string.summary_checkpoints))
