@@ -65,7 +65,15 @@ class World:
         self.viewer = None
         if with_viewer:
             from mujoco import viewer as mujoco_viewer  # sólo si se pide la ventana
-            self.viewer = mujoco_viewer.launch_passive(self.model, self.data)
+            # Sin los paneles laterales y con la cámara de arriba: se ve todo el plano y el robot recorriéndolo.
+            self.viewer = mujoco_viewer.launch_passive(
+                self.model, self.data, show_left_ui=False, show_right_ui=False)
+            with self.viewer.lock():
+                self.viewer.cam.lookat[:] = [16.4, -11.0, 0.0]
+                self.viewer.cam.distance = 38.0
+                self.viewer.cam.elevation = -60.0
+                self.viewer.cam.azimuth = 90.0
+            self.viewer.sync()
 
     def place(self, plan_x, plan_y, heading_deg):
         """Ubica la base del robot. En el plano y crece hacia abajo; en MuJoCo, hacia arriba."""
