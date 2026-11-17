@@ -29,8 +29,9 @@ import ar.edu.uade.go2rondas.domain.model.RobotSnapshot
 import ar.edu.uade.go2rondas.domain.model.SiteConfig
 import ar.edu.uade.go2rondas.presentation.common.batteryDetail
 import ar.edu.uade.go2rondas.presentation.common.batteryState
-import ar.edu.uade.go2rondas.presentation.common.checkpointLabel
 import ar.edu.uade.go2rondas.presentation.common.checkpointStatuses
+import ar.edu.uade.go2rondas.presentation.common.components.ButtonKind
+import ar.edu.uade.go2rondas.presentation.common.components.CommandButton
 import ar.edu.uade.go2rondas.presentation.common.components.CommandStatusPill
 import ar.edu.uade.go2rondas.presentation.common.components.ErrorView
 import ar.edu.uade.go2rondas.presentation.common.components.LoadingView
@@ -48,17 +49,28 @@ import ar.edu.uade.go2rondas.presentation.common.temperatureState
 @Composable
 fun PanelScreen(
     onOpenTelemetry: () -> Unit,
+    onOpenMissions: () -> Unit,
     viewModel: PanelViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    PanelContent(state = state, now = rememberNow(), onOpenTelemetry = onOpenTelemetry)
+    PanelContent(
+        state = state,
+        now = rememberNow(),
+        actions = PanelActions(onOpenTelemetry = onOpenTelemetry, onOpenMissions = onOpenMissions)
+    )
 }
+
+/** Callbacks de la pantalla agrupados, para no pasar una lista larga de parámetros sueltos. */
+data class PanelActions(
+    val onOpenTelemetry: () -> Unit,
+    val onOpenMissions: () -> Unit
+)
 
 @Composable
 fun PanelContent(
     state: UiState<PanelData>,
     now: Long,
-    onOpenTelemetry: () -> Unit,
+    actions: PanelActions,
     modifier: Modifier = Modifier
 ) {
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -70,13 +82,13 @@ fun PanelContent(
         when (state) {
             UiState.Idle, UiState.Loading -> LoadingView()
             is UiState.Error -> ErrorView(state.message)
-            is UiState.Success -> PanelBody(state.data, now, onOpenTelemetry)
+            is UiState.Success -> PanelBody(state.data, now, actions)
         }
     }
 }
 
 @Composable
-private fun PanelBody(data: PanelData, now: Long, onOpenTelemetry: () -> Unit) {
+private fun PanelBody(data: PanelData, now: Long, actions: PanelActions) {
     val snapshot = data.snapshot
     val telemetry = snapshot.telemetry
     val stale = snapshot.connection.state == LinkState.DISCONNECTED
@@ -114,7 +126,7 @@ private fun PanelBody(data: PanelData, now: Long, onOpenTelemetry: () -> Unit) {
                     value = stringResource(R.string.value_temperature, reading.temperatureC),
                     detail = stringResource(
                         R.string.value_temperature_detail,
-                        checkpointLabel(data.site, reading.checkpointId).orEmpty(),
+                        reading.checkpointId,
                         data.site.temperatureLimit(reading.checkpointId) ?: 0.0
                     ),
                     state = temperatureState(reading, data.site, stale),
@@ -131,8 +143,16 @@ private fun PanelBody(data: PanelData, now: Long, onOpenTelemetry: () -> Unit) {
                 )
             }
         }
-        TextButton(onClick = onOpenTelemetry) {
+        TextButton(onClick = actions.onOpenTelemetry) {
             Text(stringResource(R.string.panel_see_telemetry) + "  ›")
+        }
+        if (telemetry?.state == OperationalState.AT_BASE) {
+            CommandButton(
+                text = stringResource(R.string.panel_choose_mission),
+                kind = ButtonKind.PRIMARY,
+                enabled = true,
+                onClick = actions.onOpenMissions
+            )
         }
     }
 }
