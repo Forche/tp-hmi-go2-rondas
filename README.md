@@ -28,7 +28,7 @@ Tests unitarios (reglas de habilitación de órdenes, geometría del recorrido, 
 ## Cómo se usa
 
 1. **Elegí un robot.** Go2-01 es el simulador local. Go2-02 es el robot del servidor MuJoCo (ver más abajo).
-2. **Panel:** estado, conexión, batería, plano con la posición del robot y los checkpoints, progreso de la ronda y la última orden con su estado.
+2. **Panel:** estado, conexión, batería, plano con la posición del robot y los checkpoints, progreso de la ronda y la última orden con su estado. Tocando un checkpoint ya inspeccionado se ve su medición.
 3. **Misiones:** elegís la ronda, ves su recorrido y la confirmás en una hoja que muestra cada condición de inicio.
 4. **Controles** (desde el Panel): pausar, reanudar, volver a base, cancelar (con confirmación) y la detención operativa, que se mantiene presionada 2 s.
 5. **Alertas:** reconocer, decidir cómo sigue la ronda (continuar, vigilar, reintentar, saltear) y escalar al técnico de guardia.
@@ -52,7 +52,7 @@ El modo demo actúa sobre el simulador local (Go2-01). Con Go2-02 los escenarios
 
 ### Go2-02 con el servidor MuJoCo
 
-1. Instalar y levantar el servidor siguiendo [`server/README.md`](server/README.md) (`python -m go2server --viewer` abre la vista 3D).
+1. Instalar y levantar el servidor siguiendo [`server/README.md`](server/README.md). `python -m go2server --viewer` abre la vista 3D: planta baja, escalera y subsuelo, con el resultado de cada checkpoint encima (azul pendiente, amarillo midiendo, verde OK, rojo anomalía, gris salteado).
 2. Elegir **Go2-02** en la app. Si el servidor no está encendido, la app muestra *Sin conexión* y reintenta cada 3 s.
 3. Desde la consola del servidor: `obstaculo`, `temperatura`, `bateria` y `corte [s]` provocan los escenarios E2 a E5; `velocidad N` acelera la simulación.
 

@@ -105,6 +105,9 @@ fun Go2RondasApp() {
                         onOpenMissions = { navController.openTab(AppTab.MISSIONS) },
                         onOpenAlert = { navController.navigate(Screen.AlertDetail.createRoute(it)) },
                         onOpenMissionSummary = { navController.navigate(Screen.MissionSummary.createRoute(it)) },
+                        onOpenCheckpoint = { missionId, checkpointId ->
+                            navController.navigate(Screen.CheckpointDetail.createRoute(missionId, checkpointId))
+                        },
                         onOpenSimulator = { navController.navigate(Screen.Simulator.route) }
                     )
                 }
