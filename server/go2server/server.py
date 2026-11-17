@@ -2,7 +2,8 @@
 
 Mensajes (contrato del TP, no el protocolo oficial de Unitree):
   app -> servidor: command
-  servidor -> app: telemetry (1 por segundo), alerts (cuando cambian), event, command_response
+  servidor -> app: site (al conectarse), telemetry (1 por segundo), alerts (cuando cambian), event,
+                   command_response
 """
 
 import asyncio
@@ -29,8 +30,9 @@ HELP = """Comandos de consola:
 
 
 class Go2Server:
-    def __init__(self, world: World, speed: int):
-        self.robot = Robot(ROBOT_ID)
+    def __init__(self, world: World, site, speed: int):
+        self.site = site
+        self.robot = Robot(ROBOT_ID, site)
         self.world = world
         self.speed = speed
         self.clients = set()
@@ -50,6 +52,8 @@ class Go2Server:
         print(f"App conectada desde {websocket.remote_address}")
         self.last_alerts = None  # la app nueva recibe la lista completa
         try:
+            # Como un robot real, le pasa a la app el mapa que tiene cargado.
+            await websocket.send(json.dumps({"type": "site", "site": self.site.app_payload()}))
             async for raw in websocket:
                 message = json.loads(raw)
                 if message.get("type") == "command":
@@ -106,7 +110,7 @@ class Go2Server:
         if alerts != self.last_alerts:
             messages.append(alerts)
             self.last_alerts = alerts
-        level_basement = y >= 14.0
+        level_basement = self.site.level_at(y) == "BASEMENT"
         link = {"latency_ms": random.randint(180, 260) if level_basement else random.randint(70, 110),
                 "rssi_dbm": -74 if level_basement else -61}
         messages.append(json.dumps(self.robot.telemetry(self.world.plan_position(), link)))
@@ -162,10 +166,11 @@ class Go2Server:
             print("Listo")
 
 
-async def serve(host, port, model_dir, speed, with_viewer, interactive):
-    world = World(model_dir, with_viewer)
-    server = Go2Server(world, speed)
+async def serve(host, port, model_dir, site, speed, with_viewer, interactive):
+    world = World(model_dir, site, with_viewer)
+    server = Go2Server(world, site, speed)
     async with websockets.serve(server.handle_client, host, port):
+        print(f"Sitio cargado: {site.name} ({len(site.checkpoints)} checkpoints)")
         print(f"Servidor del Go2 escuchando en ws://{host}:{port} (velocidad x{speed})")
         tasks = [server.run()]
         if interactive:

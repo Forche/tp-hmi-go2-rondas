@@ -2,7 +2,7 @@
 
 Servidor de misiones para el robot **Go2-02** de la app. Corre la ronda, mueve el modelo del Go2 en MuJoCo y habla con la app por WebSocket usando el contrato JSON del TP.
 
-- **Modelo:** el Go2 de [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_go2) (Apache 2.0), en un plano del data center con los racks como volúmenes.
+- **Modelo:** el Go2 de [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie/tree/main/unitree_go2) (Apache 2.0), en la escena del sitio cargado (salas, racks y equipos como volúmenes, escalera al subsuelo).
 - **Movimiento cinemático:** la base del modelo se ubica sobre el recorrido en cada ciclo y las patas quedan en la pose de pie. No hay controlador de locomoción.
 - **Posición:** la que se informa a la app se lee del estado del modelo.
 - **Ronda:** el motor (`go2server/robot.py`) tiene el mismo comportamiento que el simulador de la app (`RobotSimulator.kt`).
@@ -33,6 +33,7 @@ cd mujoco_menagerie && git sparse-checkout set unitree_go2
 
 | Opción | Para qué |
 | --- | --- |
+| `--sitio ARCHIVO` | Sitio que se le carga al robot (por defecto `../sitios/datacenter-edificio-a.json`; formato en [sitios/README.md](../sitios/README.md)) |
 | `--viewer` | Abre la ventana de MuJoCo para ver al robot recorrer el data center |
 | `--speed N` | Multiplica el tiempo simulado (1 a 10; por defecto 4) |
 | `--port N` | Puerto del WebSocket (por defecto 8765) |
@@ -61,6 +62,7 @@ Contrato propio del TP, no el protocolo oficial de Unitree.
 
 | Dirección | Tipo | Contenido |
 | --- | --- | --- |
+| servidor → app | `site` | Al conectarse: el mapa que tiene cargado el robot (el archivo de sitio sin `simulation` ni `scene_3d`) |
 | app → servidor | `command` | `command_id`, `name` (`START_MISSION`, `PAUSE`, `RESUME`, `CANCEL`, `RETURN_TO_BASE`, `OPERATIONAL_STOP`, `ACK_ALERT`, `INCIDENT_DECISION`) y `params` |
 | servidor → app | `command_response` | `command_id`, `status` (`ACCEPTED` o `REJECTED`) y `reason` |
 | servidor → app | `telemetry` | Una vez por segundo: batería, estado, misión, ubicación, movimiento, enlace y última lectura ambiental |
@@ -71,5 +73,5 @@ Con el enlace cortado (`corte`), el servidor no envía nada y descarta las órde
 
 ## Limitaciones
 
-- La escena tiene un solo nivel: el subsuelo está dibujado al lado de la planta baja, como en el plano de la app, y la escalera no se simula físicamente.
+- La escalera no se simula físicamente: el robot baja en línea recta de un nivel al otro.
 - Las lecturas de temperatura, humedad y ruido son simuladas, igual que en la app.
