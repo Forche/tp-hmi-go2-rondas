@@ -246,6 +246,29 @@
     <string name="panel_last_mission">Última ronda: %1$s</string>
     <string name="panel_see_summary">Ver resumen</string>
 
+    <!-- Modo demo -->
+    <string name="simulator_title">Modo demo</string>
+    <string name="cd_open_simulator">Abrir el modo demo</string>
+    <string name="simulator_intro">Provoca situaciones en el robot simulado para probar los escenarios del TP.</string>
+    <string name="simulator_unavailable">El modo demo sólo funciona con el simulador local.</string>
+    <string name="simulator_speed">Velocidad de la simulación</string>
+    <string name="simulator_speed_value">x%1$d</string>
+    <string name="simulator_scenarios">Escenarios</string>
+    <string name="simulator_trigger">Activar</string>
+    <string name="simulator_triggered">Escenario activado: %1$s</string>
+    <string name="scenario_low_battery">Batería baja</string>
+    <string name="scenario_low_battery_detail">Baja la batería al 31 % y la descarga más rápido (E2).</string>
+    <string name="scenario_connection_loss">Corte de conexión</string>
+    <string name="scenario_connection_loss_detail">Corta el enlace durante 60 s; el robot sigue su regla de seguridad (E3).</string>
+    <string name="scenario_obstacle">Obstáculo</string>
+    <string name="scenario_obstacle_detail">Pone un obstáculo antes del próximo checkpoint (E4).</string>
+    <string name="scenario_high_temperature">Temperatura crítica</string>
+    <string name="scenario_high_temperature_detail">La próxima medición supera el umbral crítico del punto (E5).</string>
+    <string name="scenario_reject">Rechazar la próxima orden</string>
+    <string name="scenario_reject_detail">El robot responde la próxima orden como rechazada.</string>
+    <string name="scenario_ignore">Ignorar la próxima orden</string>
+    <string name="scenario_ignore_detail">La próxima orden se pierde y queda sin respuesta.</string>
+
     <!-- Avisos -->
     <string name="msg_command_rejected">%1$s: rechazada (%2$s)</string>
     <string name="msg_command_no_response">%1$s: sin respuesta. La orden no se reenvía sola.</string>
