@@ -1,0 +1,82 @@
+{
+  "format": "go2-sitio/1",
+  "site_id": "dc-edificio-a",
+  "name": "Data center – Edificio A",
+  "width": 32.8,
+  "height": 22.0,
+  "base": { "x": 3.3, "y": 12.5 },
+  "basement_start_y": 14.0,
+  "stairs": { "left": 28.6, "right": 30.6, "top": 13.0, "bottom": 19.0 },
+  "areas": [
+    { "kind": "LEVEL_LABEL", "label": "Planta baja", "left": 1.0, "top": 0.4, "width": 0, "height": 0 },
+    { "kind": "ROOM", "label": "NOC", "left": 0.8, "top": 2.2, "width": 5.2, "height": 12.0, "color": "#9EC2EB" },
+    { "kind": "ROOM", "label": null, "left": 6.8, "top": 2.2, "width": 19.6, "height": 12.0 },
+    { "kind": "COLD_AISLE", "label": null, "left": 9.2, "top": 6.2, "width": 12.0, "height": 4.0 },
+    { "kind": "RACK_ROW", "label": "Fila A", "left": 9.2, "top": 4.8, "width": 12.0, "height": 1.4, "height_m": 2.0 },
+    { "kind": "RACK_ROW", "label": "Fila B", "left": 9.2, "top": 10.2, "width": 12.0, "height": 1.4, "height_m": 2.0 },
+    { "kind": "EQUIPMENT", "label": "Clima", "left": 22.6, "top": 4.4, "width": 3.0, "height": 4.0, "height_m": 1.9, "color": "#66ADE6" },
+    { "kind": "EQUIPMENT", "label": "Red", "left": 22.6, "top": 10.0, "width": 3.0, "height": 1.6, "height_m": 2.0, "color": "#45669E" },
+    { "kind": "STAIRS", "label": "Escalera", "left": 27.2, "top": 2.2, "width": 4.8, "height": 12.0 },
+    { "kind": "LEVEL_LABEL", "label": "Subsuelo", "left": 1.0, "top": 14.8, "width": 0, "height": 0 },
+    { "kind": "ROOM", "label": null, "left": 6.8, "top": 16.4, "width": 19.6, "height": 5.0 },
+    { "kind": "EQUIPMENT", "label": "UPS", "left": 8.0, "top": 17.0, "width": 5.0, "height": 1.6, "height_m": 1.6, "color": "#EBA838" },
+    { "kind": "EQUIPMENT", "label": "Baterías", "left": 14.0, "top": 17.0, "width": 5.0, "height": 1.6, "height_m": 1.4, "color": "#DB852E" },
+    { "kind": "EQUIPMENT", "label": "Tablero", "left": 20.0, "top": 17.0, "width": 5.6, "height": 1.6, "height_m": 1.8, "color": "#C75C33" },
+    { "kind": "STAIRS", "label": null, "left": 27.2, "top": 16.4, "width": 4.8, "height": 5.0 }
+  ],
+  "checkpoints": [
+    { "id": "CP1", "number": 1, "name": "Pasillo caliente A", "zone": "HOT_AISLE", "x": 15.2, "y": 3.6 },
+    { "id": "CP2", "number": 2, "name": "Climatización", "zone": "COOLING", "x": 21.8, "y": 8.2 },
+    { "id": "CP3", "number": 3, "name": "Pasillo frío", "zone": "COLD_AISLE", "x": 15.2, "y": 8.2 },
+    { "id": "CP4", "number": 4, "name": "Pasillo caliente B", "zone": "HOT_AISLE", "x": 15.2, "y": 12.8 },
+    { "id": "CP5", "number": 5, "name": "Rack de red", "zone": "NETWORK", "x": 24.1, "y": 12.8 },
+    { "id": "CP6", "number": 6, "name": "Tablero general", "zone": "ELECTRICAL", "x": 22.8, "y": 20.2 },
+    { "id": "CP7", "number": 7, "name": "Baterías", "zone": "ELECTRICAL", "x": 16.5, "y": 20.2 },
+    { "id": "CP8", "number": 8, "name": "UPS", "zone": "ELECTRICAL", "x": 10.5, "y": 20.2 }
+  ],
+  "route": [
+    { "x": 3.3, "y": 12.6 }, { "x": 6.2, "y": 12.6 }, { "x": 6.2, "y": 3.6 }, { "x": 21.8, "y": 3.6 },
+    { "x": 21.8, "y": 8.2 }, { "x": 8.0, "y": 8.2 }, { "x": 8.0, "y": 12.8 }, { "x": 29.6, "y": 12.8 },
+    { "x": 29.6, "y": 20.2 }, { "x": 10.5, "y": 20.2 }
+  ],
+  "missions": [
+    { "type": "FULL_ROUND", "checkpoints": ["CP1", "CP2", "CP3", "CP4", "CP5", "CP6", "CP7", "CP8"] },
+    { "type": "GROUND_FLOOR_ROUND", "checkpoints": ["CP1", "CP2", "CP3", "CP4", "CP5"] }
+  ],
+  "thresholds": {
+    "battery": { "min_to_start": 40, "warning": 30, "critical": 15 },
+    "temperature": {
+      "COLD_AISLE": { "warning": 27.0, "critical": 32.0 },
+      "HOT_AISLE": { "warning": 38.0, "critical": 45.0 },
+      "COOLING": { "warning": 25.0, "critical": 30.0 },
+      "NETWORK": { "warning": 30.0, "critical": 35.0 },
+      "ELECTRICAL": { "warning": 30.0, "critical": 35.0 }
+    },
+    "humidity_low": { "warning": 20.0, "critical": 10.0 },
+    "humidity_high": { "warning": 70.0, "critical": 80.0 },
+    "noise_above_baseline": { "warning": 10.0, "critical": 20.0 }
+  },
+  "simulation": {
+    "humidity_pct": 45.0,
+    "typical_readings": {
+      "COLD_AISLE": { "temperature_c": 23.5, "noise_dba": 62.0 },
+      "HOT_AISLE": { "temperature_c": 31.5, "noise_dba": 66.0 },
+      "COOLING": { "temperature_c": 19.5, "noise_dba": 70.0 },
+      "NETWORK": { "temperature_c": 24.5, "noise_dba": 64.0 },
+      "ELECTRICAL": { "temperature_c": 25.5, "noise_dba": 52.0 }
+    }
+  },
+  "scene_3d": {
+    "basement_depth": 3.0,
+    "labels": [
+      { "text": "PLANTA BAJA", "x": 2.0, "y": 1.2, "height": 0.6 },
+      { "text": "NOC", "x": 3.4, "y": 3.4, "height": 0.6 },
+      { "text": "Escalera", "x": 29.6, "y": 8.0, "height": 0.6 },
+      { "text": "Base", "x": 3.3, "y": 12.5, "height": 0.5 },
+      { "text": "SUBSUELO", "x": 3.0, "y": 18.5, "height": 0.3 },
+      { "text": "UPS", "x": 10.5, "y": 17.8, "height": 2.2 },
+      { "text": "Baterias", "x": 16.5, "y": 17.8, "height": 2.0 },
+      { "text": "Tablero", "x": 22.8, "y": 17.8, "height": 2.4 }
+    ]
+  }
+}
