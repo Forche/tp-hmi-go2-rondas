@@ -23,6 +23,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.go2rondas.R
 import ar.edu.uade.go2rondas.core.model.UiState
+import ar.edu.uade.go2rondas.domain.model.AlertSeverity
 import ar.edu.uade.go2rondas.domain.model.CommandType
 import ar.edu.uade.go2rondas.domain.model.LinkState
 import ar.edu.uade.go2rondas.domain.model.OperationalState
@@ -31,7 +32,9 @@ import ar.edu.uade.go2rondas.domain.model.SiteConfig
 import ar.edu.uade.go2rondas.presentation.common.CommandFeedbackEffect
 import ar.edu.uade.go2rondas.presentation.common.batteryDetail
 import ar.edu.uade.go2rondas.presentation.common.batteryState
+import ar.edu.uade.go2rondas.presentation.common.checkpointLabel
 import ar.edu.uade.go2rondas.presentation.common.checkpointStatuses
+import ar.edu.uade.go2rondas.presentation.common.components.AlertCard
 import ar.edu.uade.go2rondas.presentation.common.components.ButtonKind
 import ar.edu.uade.go2rondas.presentation.common.components.CommandButton
 import ar.edu.uade.go2rondas.presentation.common.components.CommandStatusPill
@@ -53,6 +56,7 @@ import ar.edu.uade.go2rondas.presentation.common.temperatureState
 fun PanelScreen(
     onOpenTelemetry: () -> Unit,
     onOpenMissions: () -> Unit,
+    onOpenAlert: (String) -> Unit,
     viewModel: PanelViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -63,6 +67,7 @@ fun PanelScreen(
         actions = PanelActions(
             onOpenTelemetry = onOpenTelemetry,
             onOpenMissions = onOpenMissions,
+            onOpenAlert = onOpenAlert,
             onOpenControls = viewModel::onOpenControls,
             onCloseControls = viewModel::onCloseControls,
             onPause = viewModel::onPause,
@@ -80,6 +85,7 @@ fun PanelScreen(
 data class PanelActions(
     val onOpenTelemetry: () -> Unit,
     val onOpenMissions: () -> Unit,
+    val onOpenAlert: (String) -> Unit,
     val onOpenControls: () -> Unit,
     val onCloseControls: () -> Unit,
     val onPause: () -> Unit,
@@ -130,6 +136,12 @@ private fun PanelBody(data: PanelData, now: Long, actions: PanelActions) {
     ) {
         StatusRow(snapshot, now)
         LastCommand(snapshot)
+        // La alerta que frena la ronda, o una crítica sin reconocer, va arriba de todo.
+        val highlighted = snapshot.pendingDecision
+            ?: snapshot.unacknowledgedAlerts.firstOrNull { it.severity == AlertSeverity.CRITICAL }
+        highlighted?.let { alert ->
+            AlertCard(alert, checkpointLabel(data.site, alert.checkpointId), onClick = { actions.onOpenAlert(alert.id) })
+        }
         MissionProgress(snapshot, data.site)
         SiteMap(
             site = data.site,
@@ -192,6 +204,26 @@ private fun PanelButtons(snapshot: RobotSnapshot, actions: PanelActions) {
             enabled = true,
             onClick = actions.onOpenMissions
         )
+        return
+    }
+    val decision = snapshot.pendingDecision
+    if (state == OperationalState.AWAITING_DECISION && decision != null) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CommandButton(
+                text = stringResource(R.string.panel_view_alert),
+                kind = ButtonKind.PRIMARY,
+                enabled = true,
+                onClick = { actions.onOpenAlert(decision.id) },
+                modifier = Modifier.weight(1f)
+            )
+            CommandButton(
+                text = stringResource(R.string.panel_controls),
+                kind = ButtonKind.SECONDARY,
+                enabled = true,
+                onClick = actions.onOpenControls,
+                modifier = Modifier.weight(1f)
+            )
+        }
         return
     }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

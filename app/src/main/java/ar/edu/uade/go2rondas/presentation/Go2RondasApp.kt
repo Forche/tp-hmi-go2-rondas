@@ -19,12 +19,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import ar.edu.uade.go2rondas.R
 import ar.edu.uade.go2rondas.core.navigation.Screen
+import ar.edu.uade.go2rondas.presentation.alerts.AlertDetailScreen
+import ar.edu.uade.go2rondas.presentation.alerts.AlertsScreen
 import ar.edu.uade.go2rondas.presentation.common.LocalSnackbarHostState
 import ar.edu.uade.go2rondas.presentation.missions.MissionsScreen
 import ar.edu.uade.go2rondas.presentation.panel.PanelScreen
@@ -34,7 +38,8 @@ import ar.edu.uade.go2rondas.presentation.telemetry.TelemetryScreen
 /** Pestañas de la barra inferior. */
 enum class AppTab(val screen: Screen, @param:StringRes val label: Int, @param:DrawableRes val icon: Int) {
     PANEL(Screen.Panel, R.string.nav_panel, R.drawable.ic_nav_panel),
-    MISSIONS(Screen.Missions, R.string.nav_missions, R.drawable.ic_nav_missions)
+    MISSIONS(Screen.Missions, R.string.nav_missions, R.drawable.ic_nav_missions),
+    ALERTS(Screen.Alerts, R.string.nav_alerts, R.drawable.ic_nav_alerts)
 }
 
 /** Cambia de pestaña sin apilar pantallas: vuelve al Panel y conserva el estado de cada pestaña. */
@@ -82,7 +87,20 @@ fun Go2RondasApp() {
                 composable(Screen.Panel.route) {
                     PanelScreen(
                         onOpenTelemetry = { navController.navigate(Screen.Telemetry.route) },
-                        onOpenMissions = { navController.openTab(AppTab.MISSIONS) }
+                        onOpenMissions = { navController.openTab(AppTab.MISSIONS) },
+                        onOpenAlert = { navController.navigate(Screen.AlertDetail.createRoute(it)) }
+                    )
+                }
+                composable(Screen.Alerts.route) {
+                    AlertsScreen(onOpenAlert = { navController.navigate(Screen.AlertDetail.createRoute(it)) })
+                }
+                composable(
+                    route = Screen.AlertDetail.route,
+                    arguments = listOf(navArgument(Screen.AlertDetail.ARG_ALERT_ID) { type = NavType.StringType })
+                ) {
+                    AlertDetailScreen(
+                        onBack = { navController.popBackStack() },
+                        onBackToPanel = { navController.openTab(AppTab.PANEL) }
                     )
                 }
                 composable(Screen.Telemetry.route) {

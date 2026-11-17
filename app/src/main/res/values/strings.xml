@@ -206,6 +206,23 @@
     <string name="check_no_pending">Sin otra orden pendiente</string>
     <string name="action_cancel">Cancelar</string>
 
+    <!-- Alertas -->
+    <string name="alerts_title">Alertas</string>
+    <string name="alerts_unacknowledged_count">%1$d sin reconocer</string>
+    <string name="alerts_all_acknowledged">Todas las alertas están reconocidas</string>
+    <string name="alerts_empty">Sin alertas en esta sesión</string>
+    <string name="alert_title">Alerta</string>
+    <string name="alert_photo">Foto del checkpoint (imagen de ejemplo)</string>
+    <string name="alert_waiting_decision">El robot está detenido y espera una decisión del operador.</string>
+    <string name="alert_acknowledge_first">Para decidir cómo sigue la ronda, primero reconocé la alerta.</string>
+    <string name="alert_how_continue">¿Cómo sigue la ronda?</string>
+    <string name="alert_skip_note">El checkpoint salteado queda marcado en el resumen de la ronda.</string>
+    <string name="alert_escalate">Escalar al técnico de guardia</string>
+    <string name="alert_escalated">Escalamiento registrado en el historial</string>
+    <string name="alert_not_found">La alerta ya no está disponible</string>
+    <string name="alert_current_reading">Lectura actual en %1$s</string>
+    <string name="panel_view_alert">Ver alerta</string>
+
     <!-- Avisos -->
     <string name="msg_command_rejected">%1$s: rechazada (%2$s)</string>
     <string name="msg_command_no_response">%1$s: sin respuesta. La orden no se reenvía sola.</string>
