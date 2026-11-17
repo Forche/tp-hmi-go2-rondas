@@ -6,10 +6,12 @@ import ar.edu.uade.go2rondas.core.model.UiState
 import ar.edu.uade.go2rondas.domain.model.CheckpointResult
 import ar.edu.uade.go2rondas.domain.model.Command
 import ar.edu.uade.go2rondas.domain.model.CommandType
+import ar.edu.uade.go2rondas.domain.model.MissionRecord
 import ar.edu.uade.go2rondas.domain.model.RobotSnapshot
 import ar.edu.uade.go2rondas.domain.model.SiteConfig
 import ar.edu.uade.go2rondas.domain.usecase.GetSiteConfigUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveMissionDetailUseCase
+import ar.edu.uade.go2rondas.domain.usecase.ObserveMissionHistoryUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveRobotSnapshotUseCase
 import ar.edu.uade.go2rondas.domain.usecase.SendCommandUseCase
 import ar.edu.uade.go2rondas.presentation.common.CommandFeedback
@@ -46,7 +48,9 @@ data class PanelData(
     val site: SiteConfig,
     /** Resultados ya guardados de la ronda en curso, para pintar el plano. */
     val missionResults: List<CheckpointResult>,
-    val dialogs: PanelDialogs
+    val dialogs: PanelDialogs,
+    /** Última ronda guardada, para ofrecer su resumen cuando el robot vuelve a la base. */
+    val lastMission: MissionRecord?
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -55,6 +59,7 @@ class PanelViewModel @Inject constructor(
     observeRobotSnapshot: ObserveRobotSnapshotUseCase,
     getSiteConfig: GetSiteConfigUseCase,
     observeMissionDetail: ObserveMissionDetailUseCase,
+    observeMissionHistory: ObserveMissionHistoryUseCase,
     private val sendCommand: SendCommandUseCase
 ) : ViewModel() {
 
@@ -72,8 +77,14 @@ class PanelViewModel @Inject constructor(
 
     /** El estado se deriva de los flujos del robot y de Room; el ViewModel no lo asigna a mano. */
     val uiState: StateFlow<UiState<PanelData>> =
-        combine(snapshots, flow { emit(getSiteConfig()) }, missionResults, dialogs) { snapshot, site, results, open ->
-            PanelData(snapshot, site, results, open)
+        combine(
+            snapshots,
+            flow { emit(getSiteConfig()) },
+            missionResults,
+            dialogs,
+            observeMissionHistory().map { it.firstOrNull() }
+        ) { snapshot, site, results, open, last ->
+            PanelData(snapshot, site, results, open, last)
         }
             .map<PanelData, UiState<PanelData>> { UiState.Success(it) }
             .catch { emit(UiState.Error(it.message ?: "Error")) }
