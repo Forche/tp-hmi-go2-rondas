@@ -21,7 +21,6 @@
     <string name="banner_disconnected_detail">Último dato hace %1$d s · reintentando conexión</string>
     <string name="banner_waiting_first_data">Esperando el primer dato del robot</string>
     <string name="battery_percent">%1$d %%</string>
-    <string name="cd_battery">Batería</string>
 
     <!-- Órdenes -->
     <string name="command_start">Iniciar ronda</string>
@@ -123,8 +122,6 @@
     <!-- Robots -->
     <string name="robot_source_local">Simulador local · sin red</string>
     <string name="robot_source_mujoco">Servidor MuJoCo · %1$s</string>
-    <string name="robot_battery">Batería %1$d %%</string>
-    <string name="robot_battery_unknown">Batería —</string>
     <string name="robot_subtitle">%1$s · %2$s</string>
     <string name="robot_subtitle_local">simulador local</string>
     <string name="robot_subtitle_mujoco">servidor MuJoCo</string>
@@ -284,5 +281,4 @@
     <!-- Comunes -->
     <string name="cd_back">Volver</string>
     <string name="error_loading">No se pudo cargar: %1$s</string>
-    <string name="cd_open">Abrir</string>
 </resources>
