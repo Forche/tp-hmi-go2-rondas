@@ -3,6 +3,8 @@
 
     <!-- Sólo para el robot Go2-02 (servidor MuJoCo en la red local). El simulador local no usa red. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Avisos de alertas con la app en segundo plano (Android 13 o más lo pide al operador). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".Go2RondasApplication"
@@ -14,6 +16,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.Go2Rondas">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

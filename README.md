@@ -28,11 +28,11 @@ Tests unitarios (reglas de habilitación de órdenes, geometría del recorrido, 
 ## Cómo se usa
 
 1. **Elegí un robot.** Go2-01 es el simulador local. Go2-02 es el robot del servidor MuJoCo (ver más abajo).
-2. **Panel:** estado, conexión, batería, plano con la posición del robot y los checkpoints, progreso de la ronda y la última orden con su estado. Tocando un checkpoint ya inspeccionado se ve su medición.
+2. **Panel:** primero, una frase con lo que hace el robot y si hace falta intervenir ("Camino a CP3 · Pasillo frío. No necesitás intervenir."); después estado, conexión, batería, plano con la posición del robot y los checkpoints, progreso de la ronda y la última orden con su estado. Tocando un checkpoint ya inspeccionado se ve su medición.
 3. **Misiones:** elegís la ronda, ves su recorrido y la confirmás en una hoja que muestra cada condición de inicio.
 4. **Controles** (desde el Panel): pausar, reanudar, volver a base, cancelar (con confirmación) y la detención operativa, que se mantiene presionada 2 s.
-5. **Alertas:** reconocer, decidir cómo sigue la ronda (continuar, vigilar, reintentar, saltear) y escalar al técnico de guardia.
-6. **Historial:** rondas del robot elegido guardadas en Room, con el resultado de cada checkpoint y los eventos (alertas, órdenes, cortes de conexión).
+5. **Alertas:** con la app en segundo plano llegan como notificación (las críticas, con prioridad alta) y al tocarla se abre su detalle. Desde el detalle: reconocer, decidir cómo sigue la ronda (continuar, vigilar, reintentar, saltear) y escalar al técnico de guardia.
+6. **Historial:** rondas del robot elegido guardadas en Room, con el resultado de cada checkpoint y los eventos (alertas, órdenes, cortes de conexión). El resumen de cada ronda cierra con lo que conviene hacer después.
 
 ### Modo demo (los 5 escenarios del TP)
 

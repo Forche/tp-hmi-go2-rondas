@@ -149,6 +149,7 @@ class RobotSimulator(
             return
         }
         val target = m.current ?: run { state = RETURNING; return }
+        if (lacksBatteryForBasement(m, target)) return
 
         if (obstacleArmed && obstacleAt == null) {
             val gap = target.distance - distance
@@ -311,6 +312,29 @@ class RobotSimulator(
     }
 
     // ---------------------------------------------------------------- batería
+
+    /**
+     * Regla R5: antes de bajar la escalera estima la batería para inspeccionar los puntos del subsuelo
+     * y volver a la base, con el consumo actual. Si no alcanza para llegar con más del nivel crítico,
+     * no baja: avisa y vuelve. Devuelve true si el robot cambió de plan.
+     */
+    private fun lacksBatteryForBasement(m: SimMission, target: Target): Boolean {
+        val here = route.pointAt(distance)
+        if (target.checkpoint.level != Level.BASEMENT) return false
+        if (site.levelAt(here) != Level.GROUND_FLOOR || site.isOnStairs(here, margin = 0f)) return false
+        val below = m.targets.drop(m.nextIndex).filter { it.checkpoint.level == Level.BASEMENT }
+        val farthest = below.maxOf { it.distance }
+        val meters = (farthest - distance) + farthest
+        val drain = (meters / SPEED_MPS * MOVING_DRAIN_PER_SECOND + below.size * INSPECTION_SECONDS * IDLE_DRAIN_PER_SECOND) *
+            drainMultiplier
+        val needed = thresholds.batteryCriticalPct + drain
+        if (battery >= needed) return false
+        m.lowBatteryDuringMission = true
+        raiseAlert(AlertSeverity.WARNING, AlertCode.BATTERY_INSUFFICIENT_FOR_BASEMENT, target.checkpoint.id, battery, round1(needed))
+        speed = 0.0
+        state = RETURNING
+        return true
+    }
 
     private fun drainBattery(dt: Double) {
         if (state == AT_BASE) return

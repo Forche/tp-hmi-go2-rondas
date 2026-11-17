@@ -101,6 +101,7 @@ fun AlertCode.titleRes(): Int = when (this) {
     AlertCode.NOISE_HIGH -> R.string.alert_noise
     AlertCode.BATTERY_LOW -> R.string.alert_battery_low
     AlertCode.BATTERY_CRITICAL -> R.string.alert_battery_critical
+    AlertCode.BATTERY_INSUFFICIENT_FOR_BASEMENT -> R.string.alert_battery_basement
 }
 
 @StringRes

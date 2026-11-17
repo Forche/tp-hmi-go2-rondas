@@ -153,6 +153,7 @@ private fun PanelBody(data: PanelData, now: Long, actions: PanelActions) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         StatusRow(snapshot, now)
+        NextActionText(snapshot, data.site)
         LastCommand(snapshot)
         // La alerta que frena la ronda, o una crítica sin reconocer, va arriba de todo.
         val highlighted = snapshot.pendingDecision
@@ -328,6 +329,18 @@ private fun LastMission(data: PanelData, actions: PanelActions) {
             Text(stringResource(R.string.panel_see_summary))
         }
     }
+}
+
+/** Primero en el Panel: qué pasa y si el operador tiene que hacer algo (jerarquía de información). */
+@Composable
+private fun NextActionText(snapshot: RobotSnapshot, site: SiteConfig) {
+    val action = nextAction(snapshot, site) ?: return
+    val text = when {
+        action.checkpoint != null -> stringResource(action.text, action.checkpoint)
+        action.number != null -> stringResource(action.text, action.number)
+        else -> stringResource(action.text)
+    }
+    Text(text, style = MaterialTheme.typography.bodyMedium)
 }
 
 @Composable

@@ -1,5 +1,6 @@
 package ar.edu.uade.go2rondas.presentation.common.components
 
+import android.content.Context
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -103,16 +105,21 @@ fun AlertSeverity.iconRes(): Int = when (this) {
 
 /** Detalle de una alerta: dónde y con qué valor frente al umbral. */
 @Composable
-fun alertDetailText(alert: Alert, checkpointLabel: String?): String {
+fun alertDetailText(alert: Alert, checkpointLabel: String?): String =
+    alertDetailText(LocalContext.current, alert, checkpointLabel)
+
+/** Igual que la versión de Compose; la usan también las notificaciones. */
+fun alertDetailText(context: Context, alert: Alert, checkpointLabel: String?): String {
     val place = checkpointLabel ?: alert.checkpointId.orEmpty()
     val value = alert.measuredValue ?: 0.0
     val threshold = alert.threshold ?: 0.0
     return when (alert.code) {
-        AlertCode.OBSTACLE -> stringResource(R.string.alert_detail_obstacle, place)
-        AlertCode.TEMPERATURE_HIGH -> stringResource(R.string.alert_detail_temperature, place, value, threshold)
-        AlertCode.HUMIDITY_OUT_OF_RANGE -> stringResource(R.string.alert_detail_humidity, place, value, threshold)
-        AlertCode.NOISE_HIGH -> stringResource(R.string.alert_detail_noise, place, value, threshold)
-        AlertCode.BATTERY_LOW, AlertCode.BATTERY_CRITICAL -> stringResource(R.string.alert_detail_battery, value, threshold)
+        AlertCode.OBSTACLE -> context.getString(R.string.alert_detail_obstacle, place)
+        AlertCode.TEMPERATURE_HIGH -> context.getString(R.string.alert_detail_temperature, place, value, threshold)
+        AlertCode.HUMIDITY_OUT_OF_RANGE -> context.getString(R.string.alert_detail_humidity, place, value, threshold)
+        AlertCode.NOISE_HIGH -> context.getString(R.string.alert_detail_noise, place, value, threshold)
+        AlertCode.BATTERY_LOW, AlertCode.BATTERY_CRITICAL -> context.getString(R.string.alert_detail_battery, value, threshold)
+        AlertCode.BATTERY_INSUFFICIENT_FOR_BASEMENT -> context.getString(R.string.alert_detail_battery_basement, value, threshold)
     }
 }
 

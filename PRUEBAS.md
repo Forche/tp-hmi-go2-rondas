@@ -37,6 +37,7 @@ Con la forma A conviene subir la velocidad a x10 en el modo demo (ícono de ajus
 2. Provocar el escenario: forma A, modo demo → *Batería baja*; forma B, consola → `bateria`. La batería pasa a 31 % y se descarga más rápido.
 3. Al llegar a 30 % aparece la advertencia y **Volver a base** pasa a ser el botón principal. Tocarlo: la orden queda confirmada y el estado pasa a *Regresando*.
 4. Variante: no hacer nada. Al 15 % el robot vuelve solo.
+5. Variante R5: provocar la batería baja mientras el robot va hacia CP5 (el último punto de planta baja). Antes de la escalera aparece *No alcanza la batería para el subsuelo* con la batería que necesitaría, y el robot vuelve sin bajar.
 
 **Esperado:** la ronda queda *Interrumpida por batería* en el historial, con los checkpoints que llegó a hacer.
 
@@ -72,6 +73,8 @@ Con la forma A conviene subir la velocidad a x10 en el modo demo (ícono de ajus
 **Esperado:** el resumen marca la anomalía en ese checkpoint (rojo en el plano y en MuJoCo) y el historial registra el escalamiento.
 
 ## Pruebas extra
+
+- **Notificaciones:** la primera vez la app pide permiso para notificar (Android 13 o más). Con una ronda en curso, provocar un escenario y salir de la app con el botón de inicio. La alerta llega como notificación; al tocarla se abre su detalle. Con la app a la vista no notifica, porque el Panel ya muestra la alerta.
 
 - **Cambiar de sitio sin recompilar:** el ejemplo `sitios/datacenter-edificio-b.json` es un data center de una sola planta con 5 checkpoints. Para probarlo:
   - Forma A: subir el archivo al emulador con `adb push sitios/datacenter-edificio-b.json /sdcard/Download/`. Después, con el robot en la base, ir a modo demo → *Cargar archivo…* → Descargas. El Panel muestra el plano nuevo y en Misiones sólo aparece la ronda completa. *Usar el de ejemplo* vuelve al Edificio A.

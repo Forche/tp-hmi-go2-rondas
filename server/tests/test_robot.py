@@ -57,6 +57,16 @@ class RobotTest(unittest.TestCase):
         self.run_until(lambda: self.robot.state == "AT_BASE")
         self.assertEqual("INTERRUPTED_LOW_BATTERY", self.finished()["result"])
 
+    def test_without_battery_to_come_back_the_robot_does_not_go_down(self):
+        self.start_full_round()
+        self.run_until(lambda: len(self.results()) == 5)
+        self.robot.trigger("LOW_BATTERY")
+        self.run_until(lambda: self.robot.state == "AT_BASE")
+        codes = [a["code"] for a in self.robot.alerts]
+        self.assertIn("BATTERY_INSUFFICIENT_FOR_BASEMENT", codes)
+        self.assertEqual(["CP1", "CP2", "CP3", "CP4", "CP5"], [r["checkpoint_id"] for r in self.results()])
+        self.assertEqual("INTERRUPTED_LOW_BATTERY", self.finished()["result"])
+
     def test_telemetry_follows_the_contract(self):
         self.start_full_round()
         self.run_until(lambda: len(self.results()) == 2)

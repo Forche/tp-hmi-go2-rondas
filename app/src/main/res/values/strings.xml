@@ -57,14 +57,14 @@
     <string name="reason_alert_not_acknowledged">Primero reconocé la alerta</string>
 
     <!-- Motivo de rechazo informado por el robot -->
-    <string name="rejection_low_battery">batería insuficiente</string>
-    <string name="rejection_not_at_base">el robot no está en la base</string>
+    <string name="rejection_low_battery">batería insuficiente; esperá a que cargue</string>
+    <string name="rejection_not_at_base">el robot no está en la base; mandalo a la base primero</string>
     <string name="rejection_no_active_mission">no hay ronda activa</string>
-    <string name="rejection_invalid_state">no aplica en el estado actual</string>
-    <string name="rejection_on_stairs">el robot está en la escalera</string>
-    <string name="rejection_obstacle_persists">obstáculo persistente</string>
+    <string name="rejection_invalid_state">el robot cambió de estado antes de recibirla; revisá el Panel</string>
+    <string name="rejection_on_stairs">el robot está en la escalera; pausá cuando termine el tramo</string>
+    <string name="rejection_obstacle_persists">el obstáculo sigue ahí; salteá el punto o mandalo a la base</string>
     <string name="rejection_alert_not_found">la alerta ya no está activa</string>
-    <string name="rejection_simulated">rechazo simulado</string>
+    <string name="rejection_simulated">rechazo simulado desde el modo demo</string>
     <string name="rejection_reason">Motivo: %1$s</string>
 
     <!-- Alertas -->
@@ -77,6 +77,7 @@
     <string name="alert_noise">Ruido anómalo</string>
     <string name="alert_battery_low">Batería baja</string>
     <string name="alert_battery_critical">Batería crítica</string>
+    <string name="alert_battery_basement">No alcanza la batería para el subsuelo</string>
     <string name="alert_unacknowledged">Sin reconocer</string>
     <string name="alert_acknowledged">Reconocida</string>
     <string name="alert_detail_obstacle">Antes de %1$s · el robot se detuvo</string>
@@ -84,6 +85,7 @@
     <string name="alert_detail_humidity">%1$s · %2$.0f %% (umbral %3$.0f %%)</string>
     <string name="alert_detail_noise">%1$s · %2$.0f dB(A) (umbral %3$.0f dB(A))</string>
     <string name="alert_detail_battery">%1$.0f %% (umbral %2$.0f %%)</string>
+    <string name="alert_detail_battery_basement">%1$.0f %%: para bajar, inspeccionar y volver necesita %2$.0f %%. Vuelve a la base sin bajar.</string>
     <string name="decision_continue">Continuar</string>
     <string name="decision_skip">Saltear %1$s</string>
     <string name="decision_retry">Reintentar</string>
@@ -136,6 +138,19 @@
 
     <!-- Panel -->
     <string name="panel_title">Panel</string>
+    <string name="next_disconnected">Sin datos del robot. Sigue su regla de seguridad: termina el punto y espera en un lugar seguro. Esperá a que vuelva el enlace.</string>
+    <string name="next_charging">Cargando en la base. Necesita %1$d %% para salir.</string>
+    <string name="next_ready">Listo para salir. Elegí una misión.</string>
+    <string name="next_ack_critical">Hay una alerta crítica sin reconocer. Reconocela antes de iniciar otra ronda.</string>
+    <string name="next_on_mission">Camino a %1$s. No necesitás intervenir.</string>
+    <string name="next_on_mission_generic">En ronda. No necesitás intervenir.</string>
+    <string name="next_measuring">Midiendo en %1$s. No necesitás intervenir.</string>
+    <string name="next_low_battery">Batería baja: conviene mandarlo a la base ahora.</string>
+    <string name="next_decision">El robot está quieto y espera tu decisión. Abrí la alerta.</string>
+    <string name="next_paused">Ronda pausada. El robot espera quieto; reanudá cuando quieras.</string>
+    <string name="next_stopped">Robot detenido. Revisá la zona y, desde Controles, reanudá o mandalo a la base.</string>
+    <string name="next_returning">Volviendo a la base. No necesitás intervenir.</string>
+    <string name="next_returning_battery">Volviendo a la base por batería baja. No necesitás intervenir.</string>
     <string name="panel_progress">Checkpoint %1$d de %2$d · %3$s</string>
     <string name="panel_returning">Regresando a la base</string>
     <string name="panel_no_mission">Sin ronda activa</string>
@@ -228,6 +243,12 @@
     <string name="history_subtitle">Rondas en %1$s</string>
     <string name="history_empty">Todavía no hay rondas en %1$s</string>
     <string name="summary_title">Resumen de ronda</string>
+    <string name="summary_next_ok">Todo en orden. No hace falta hacer nada.</string>
+    <string name="summary_next_anomalies">Revisá los puntos con anomalía (tocalos para ver la medición) y escalá al técnico de guardia si hace falta.</string>
+    <string name="summary_next_skipped">Hay puntos salteados. Cuando se despeje el paso, lanzá una inspección puntual.</string>
+    <string name="summary_next_battery">El robot volvió a cargar. Cuando tenga la batería mínima, repetí la ronda o inspeccioná los puntos que faltaron.</string>
+    <string name="summary_next_cancelled">La ronda se canceló: los puntos que faltaron no se inspeccionaron. Si hace falta, lanzá otra ronda o una inspección puntual.</string>
+    <string name="summary_next_aborted">La ronda quedó sin cerrar porque se reinició el robot. Revisá qué puntos alcanzó a inspeccionar.</string>
     <string name="summary_time_range">%1$s – %2$s · %3$s</string>
     <string name="summary_in_progress">Desde %1$s · en curso</string>
     <string name="summary_checkpoints">Checkpoints</string>
@@ -271,7 +292,7 @@
 
     <!-- Avisos -->
     <string name="msg_command_rejected">%1$s: rechazada (%2$s)</string>
-    <string name="msg_command_no_response">%1$s: sin respuesta. La orden no se reenvía sola.</string>
+    <string name="msg_command_no_response">%1$s: el robot no respondió. Revisá la conexión y, si hace falta, enviala de nuevo; la app no la reenvía sola.</string>
 
     <!-- Navegación -->
     <string name="nav_panel">Panel</string>
@@ -289,4 +310,8 @@
     <string name="site_loaded">Sitio cargado: %1$s</string>
     <string name="site_invalid">El archivo no es un sitio válido: %1$s</string>
     <string name="site_robot_busy">Para cambiar el sitio, el robot tiene que estar en la base.</string>
+    <string name="channel_critical">Alertas críticas del robot</string>
+    <string name="channel_warning">Advertencias del robot</string>
+    <string name="notification_alert_title">%1$s: %2$s · %3$s</string>
+    <string name="notification_alert_decision">%1$s. El robot espera tu decisión.</string>
 </resources>

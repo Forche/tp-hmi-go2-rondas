@@ -136,6 +136,8 @@ class Robot:
             self.state = "RETURNING"
             return
         checkpoint_id, target_distance = target
+        if self._lacks_battery_for_basement(m, checkpoint_id):
+            return
         if self.obstacle_armed and self.obstacle_at is None:
             gap = target_distance - self.distance
             if gap > 1.5:
@@ -254,6 +256,27 @@ class Robot:
         self.watch_timer = WATCH_INTERVAL_SECONDS
 
     # ------------------------------------------------------------ batería
+
+    def _lacks_battery_for_basement(self, m, checkpoint_id):
+        """Regla R5 (igual que en la app): no baja al subsuelo si la batería no alcanza para volver."""
+        site = self.site
+        if site.level_at(site.checkpoints[checkpoint_id][0][1]) != "BASEMENT":
+            return False
+        x, y = self.route.point_at(self.distance)
+        if site.level_at(y) != "GROUND_FLOOR" or site.on_stairs(x, y, margin=0.0):
+            return False
+        below = [t for t in m.targets[m.next_index:] if site.level_at(site.checkpoints[t[0]][0][1]) == "BASEMENT"]
+        farthest = max(t[1] for t in below)
+        meters = (farthest - self.distance) + farthest
+        drain = (meters / SPEED_MPS * MOVING_DRAIN + len(below) * INSPECTION_SECONDS * IDLE_DRAIN) * self.drain_multiplier
+        needed = site.battery_critical + drain
+        if self.battery >= needed:
+            return False
+        m.low_battery = True
+        self._raise_alert("WARNING", "BATTERY_INSUFFICIENT_FOR_BASEMENT", checkpoint_id, self.battery, round(needed, 1))
+        self.speed = 0.0
+        self.state = "RETURNING"
+        return True
 
     def _drain_battery(self, dt):
         if self.state == "AT_BASE":

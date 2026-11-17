@@ -21,7 +21,10 @@ enum class AlertCode {
     HUMIDITY_OUT_OF_RANGE,
     NOISE_HIGH,
     BATTERY_LOW,
-    BATTERY_CRITICAL
+    BATTERY_CRITICAL,
+
+    /** Regla R5: la batería no alcanza para inspeccionar el subsuelo y volver; el robot no baja. */
+    BATTERY_INSUFFICIENT_FOR_BASEMENT
 }
 
 /** Opciones del operador cuando el robot espera una decisión. */

@@ -1,5 +1,6 @@
 package ar.edu.uade.go2rondas.presentation.history
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import ar.edu.uade.go2rondas.R
@@ -7,10 +8,26 @@ import ar.edu.uade.go2rondas.domain.model.CheckpointResult
 import ar.edu.uade.go2rondas.domain.model.CommandStatus
 import ar.edu.uade.go2rondas.domain.model.HistoryEvent
 import ar.edu.uade.go2rondas.domain.model.MissionDetail
+import ar.edu.uade.go2rondas.domain.model.MissionRecord
+import ar.edu.uade.go2rondas.domain.model.MissionResult
 import ar.edu.uade.go2rondas.domain.model.MissionType
 import ar.edu.uade.go2rondas.domain.model.SiteConfig
 import ar.edu.uade.go2rondas.presentation.common.labelRes
 import ar.edu.uade.go2rondas.presentation.common.titleRes
+
+/** Cierre del resumen: qué conviene hacer después de la ronda. Null mientras sigue en curso. */
+@StringRes
+fun MissionRecord.nextStepRes(): Int? = when (result) {
+    null -> null
+    MissionResult.COMPLETED -> when {
+        anomalies > 0 -> R.string.summary_next_anomalies
+        skipped > 0 -> R.string.summary_next_skipped
+        else -> R.string.summary_next_ok
+    }
+    MissionResult.INTERRUPTED_LOW_BATTERY -> R.string.summary_next_battery
+    MissionResult.CANCELLED -> R.string.summary_next_cancelled
+    MissionResult.ABORTED -> R.string.summary_next_aborted
+}
 
 /** Checkpoints que tenía que recorrer la ronda, en orden. La inspección puntual sale de sus resultados. */
 fun SiteConfig.checkpointsOf(detail: MissionDetail): List<String> = when (detail.record.type) {
