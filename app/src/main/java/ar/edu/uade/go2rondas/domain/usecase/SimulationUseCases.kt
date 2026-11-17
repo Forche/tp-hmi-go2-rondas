@@ -1,6 +1,7 @@
 package ar.edu.uade.go2rondas.domain.usecase
 
 import ar.edu.uade.go2rondas.domain.model.SimulationScenario
+import ar.edu.uade.go2rondas.domain.model.SiteLoadResult
 import ar.edu.uade.go2rondas.domain.repository.SimulationRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -19,4 +20,12 @@ class SetSimulationTimeScaleUseCase @Inject constructor(private val repository: 
 
 class TriggerSimulationScenarioUseCase @Inject constructor(private val repository: SimulationRepository) {
     suspend operator fun invoke(scenario: SimulationScenario) = repository.trigger(scenario)
+}
+
+class LoadSimulatorSiteUseCase @Inject constructor(private val repository: SimulationRepository) {
+    suspend operator fun invoke(documentUri: String): SiteLoadResult = repository.loadSite(documentUri)
+}
+
+class ResetSimulatorSiteUseCase @Inject constructor(private val repository: SimulationRepository) {
+    suspend operator fun invoke(): SiteLoadResult = repository.resetSite()
 }

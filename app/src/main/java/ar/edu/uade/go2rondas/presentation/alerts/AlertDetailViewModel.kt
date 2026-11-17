@@ -13,7 +13,7 @@ import ar.edu.uade.go2rondas.domain.model.IncidentDecision
 import ar.edu.uade.go2rondas.domain.model.RobotSnapshot
 import ar.edu.uade.go2rondas.domain.model.SiteConfig
 import ar.edu.uade.go2rondas.domain.usecase.EscalateIncidentUseCase
-import ar.edu.uade.go2rondas.domain.usecase.GetSiteConfigUseCase
+import ar.edu.uade.go2rondas.domain.usecase.ObserveSiteConfigUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveRobotSnapshotUseCase
 import ar.edu.uade.go2rondas.domain.usecase.SendCommandUseCase
 import ar.edu.uade.go2rondas.presentation.common.CommandFeedback
@@ -26,7 +26,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -48,7 +47,7 @@ sealed interface AlertDetailUiEffect {
 class AlertDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     observeRobotSnapshot: ObserveRobotSnapshotUseCase,
-    getSiteConfig: GetSiteConfigUseCase,
+    observeSiteConfig: ObserveSiteConfigUseCase,
     private val sendCommand: SendCommandUseCase,
     private val escalateIncident: EscalateIncidentUseCase
 ) : ViewModel() {
@@ -57,7 +56,7 @@ class AlertDetailViewModel @Inject constructor(
     private val alertId: String = checkNotNull(savedStateHandle[Screen.AlertDetail.ARG_ALERT_ID])
 
     val uiState: StateFlow<UiState<AlertDetailData>> =
-        combine(observeRobotSnapshot(), flow { emit(getSiteConfig()) }) { snapshot, site ->
+        combine(observeRobotSnapshot(), observeSiteConfig()) { snapshot, site ->
             AlertDetailData(snapshot, site, snapshot.alerts.firstOrNull { it.id == alertId })
         }
             .map<AlertDetailData, UiState<AlertDetailData>> { UiState.Success(it) }

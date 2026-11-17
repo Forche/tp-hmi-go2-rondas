@@ -7,7 +7,6 @@ import ar.edu.uade.go2rondas.data.local.HistoryLocalDataSource
 import ar.edu.uade.go2rondas.data.mapper.newMissionEntity
 import ar.edu.uade.go2rondas.data.mapper.toEntity
 import ar.edu.uade.go2rondas.data.remote.MujocoRobotDataSource
-import ar.edu.uade.go2rondas.data.sim.DataCenterSite
 import ar.edu.uade.go2rondas.data.sim.SimulatedRobotDataSource
 import ar.edu.uade.go2rondas.data.source.RobotDataSource
 import ar.edu.uade.go2rondas.domain.model.Alert
@@ -17,6 +16,7 @@ import ar.edu.uade.go2rondas.domain.model.CommandRecord
 import ar.edu.uade.go2rondas.domain.model.CommandStatus
 import ar.edu.uade.go2rondas.domain.model.ConnectionStatus
 import ar.edu.uade.go2rondas.domain.model.HistoryEvent
+import ar.edu.uade.go2rondas.domain.model.HmiTimings
 import ar.edu.uade.go2rondas.domain.model.LinkState
 import ar.edu.uade.go2rondas.domain.model.MissionResult
 import ar.edu.uade.go2rondas.domain.model.Robot
@@ -63,8 +63,6 @@ class RobotRepositoryImpl @Inject constructor(
     private val lastCommand = MutableStateFlow<CommandRecord?>(null)
     private var activeSource: RobotDataSource? = null
     private var collectJob: Job? = null
-
-    private val thresholds = DataCenterSite.config.thresholds
 
     private val clockTicks: Flow<Long> = flow {
         while (true) {
@@ -133,7 +131,15 @@ class RobotRepositoryImpl @Inject constructor(
 
     override fun observeLastCommand(): Flow<CommandRecord?> = lastCommand.asStateFlow()
 
-    override suspend fun getSiteConfig(): SiteConfig = activeSource?.getSiteConfig() ?: DataCenterSite.config
+    /** El mapa lo pone el robot elegido: cada uno manda el que tiene cargado. */
+    private val site: StateFlow<SiteConfig> =
+        combine(activeRobot, simulator.site, mujoco.site) { robot, local, remote ->
+            if (robot?.source == RobotSource.MUJOCO_SERVER) remote else local
+        }.stateIn(scope, SharingStarted.Eagerly, simulator.site.value)
+
+    override fun observeSiteConfig(): Flow<SiteConfig> = site
+
+    override suspend fun getSiteConfig(): SiteConfig = site.value
 
     /**
      * Corre en el scope de la app: si el operador cambia de pantalla, la orden igual termina
@@ -142,7 +148,7 @@ class RobotRepositoryImpl @Inject constructor(
     override suspend fun send(command: Command): CommandOutcome = scope.async {
         val sentAt = System.currentTimeMillis()
         lastCommand.value = CommandRecord(command, CommandStatus.PENDING, sentAt)
-        val timeoutMillis = thresholds.commandTimeoutSeconds * 1_000L
+        val timeoutMillis = HmiTimings.COMMAND_TIMEOUT_SECONDS * 1_000L
         val source = activeSource
         val outcome = if (source == null) {
             delay(timeoutMillis)
@@ -221,8 +227,8 @@ class RobotRepositoryImpl @Inject constructor(
         val age = now - lastAt
         val latency = current?.link?.latencyMs
         val state = when {
-            age > thresholds.staleAfterSeconds * 1_000L -> LinkState.DISCONNECTED
-            age > DEGRADED_AGE_MILLIS || (latency ?: 0) > thresholds.degradedLatencyMs -> LinkState.DEGRADED
+            age > HmiTimings.STALE_AFTER_SECONDS * 1_000L -> LinkState.DISCONNECTED
+            age > DEGRADED_AGE_MILLIS || (latency ?: 0) > HmiTimings.DEGRADED_LATENCY_MS -> LinkState.DEGRADED
             else -> LinkState.CONNECTED
         }
         return ConnectionStatus(state, lastAt, latency.takeIf { state != LinkState.DISCONNECTED })

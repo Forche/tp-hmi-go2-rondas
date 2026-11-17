@@ -9,7 +9,7 @@ import ar.edu.uade.go2rondas.domain.model.MissionDetail
 import ar.edu.uade.go2rondas.domain.model.MissionRecord
 import ar.edu.uade.go2rondas.domain.model.RobotSnapshot
 import ar.edu.uade.go2rondas.domain.model.SiteConfig
-import ar.edu.uade.go2rondas.domain.usecase.GetSiteConfigUseCase
+import ar.edu.uade.go2rondas.domain.usecase.ObserveSiteConfigUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveMissionDetailUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveMissionHistoryUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveRobotSnapshotUseCase
@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
@@ -51,7 +50,7 @@ data class MissionSummaryData(
 class MissionSummaryViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     observeRobotSnapshot: ObserveRobotSnapshotUseCase,
-    getSiteConfig: GetSiteConfigUseCase,
+    observeSiteConfig: ObserveSiteConfigUseCase,
     observeMissionDetail: ObserveMissionDetailUseCase
 ) : ViewModel() {
 
@@ -59,7 +58,7 @@ class MissionSummaryViewModel @Inject constructor(
     val checkpointId: String? = savedStateHandle[Screen.CheckpointDetail.ARG_CHECKPOINT_ID]
 
     val uiState: StateFlow<UiState<MissionSummaryData>> =
-        combine(observeRobotSnapshot(), flow { emit(getSiteConfig()) }, observeMissionDetail(missionId)) { snapshot, site, detail ->
+        combine(observeRobotSnapshot(), observeSiteConfig(), observeMissionDetail(missionId)) { snapshot, site, detail ->
             MissionSummaryData(snapshot, site, detail)
         }
             .map<MissionSummaryData, UiState<MissionSummaryData>> { UiState.Success(it) }

@@ -1,5 +1,6 @@
 package ar.edu.uade.go2rondas.data.remote.dto
 
+import ar.edu.uade.go2rondas.data.site.SiteFileDto
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -9,6 +10,11 @@ import kotlinx.serialization.Serializable
 /** Lo que llega del servidor. */
 @Serializable
 sealed interface ServerMessage
+
+/** El mapa que tiene cargado el robot; lo manda al conectarse la app. */
+@Serializable
+@SerialName("site")
+data class SiteMessageDto(val site: SiteFileDto) : ServerMessage
 
 @Serializable
 @SerialName("telemetry")

@@ -282,4 +282,11 @@
     <!-- Comunes -->
     <string name="cd_back">Volver</string>
     <string name="error_loading">No se pudo cargar: %1$s</string>
+    <string name="site_current">Sitio cargado en el robot</string>
+    <string name="site_load_detail">El mapa, los checkpoints, las misiones y los umbrales salen de un archivo de sitio (.json). Se cambia con el robot en la base.</string>
+    <string name="site_load">Cargar archivo…</string>
+    <string name="site_reset">Usar el de ejemplo</string>
+    <string name="site_loaded">Sitio cargado: %1$s</string>
+    <string name="site_invalid">El archivo no es un sitio válido: %1$s</string>
+    <string name="site_robot_busy">Para cambiar el sitio, el robot tiene que estar en la base.</string>
 </resources>

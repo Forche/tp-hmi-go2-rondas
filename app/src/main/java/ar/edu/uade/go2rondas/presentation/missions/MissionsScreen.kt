@@ -125,7 +125,8 @@ private fun MissionsBody(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(stringResource(R.string.missions_choose), style = MaterialTheme.typography.titleMedium)
-        MissionType.entries.forEach { type ->
+        // Sólo las misiones que trae el sitio cargado en el robot (el chequeo puntual está siempre).
+        data.site.missions.map { it.type }.forEach { type ->
             SelectableCard(
                 title = stringResource(type.nameRes()),
                 detail = stringResource(type.detailRes()),

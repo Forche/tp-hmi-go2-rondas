@@ -1,5 +1,6 @@
 package ar.edu.uade.go2rondas.data.sim
 
+import ar.edu.uade.go2rondas.data.site.TestSites
 import ar.edu.uade.go2rondas.domain.model.PlanPoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -41,8 +42,10 @@ class RoutePathTest {
     }
 
     @Test
-    fun `every checkpoint of the site lies on the route in mission order`() {
-        val site = DataCenterSite.config
+    fun `every checkpoint of the example sites lies on the route in mission order`() = listOf(
+        TestSites.BUILDING_A, TestSites.BUILDING_B
+    ).forEach { name ->
+        val site = TestSites.load(name).config
         val route = RoutePath(site.route)
         val distances = site.checkpoints.map { route.distanceOf(it.position) }
         assertEquals(distances.sorted(), distances)

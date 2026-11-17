@@ -9,7 +9,7 @@ import ar.edu.uade.go2rondas.domain.model.CommandType
 import ar.edu.uade.go2rondas.domain.model.MissionType
 import ar.edu.uade.go2rondas.domain.model.RobotSnapshot
 import ar.edu.uade.go2rondas.domain.model.SiteConfig
-import ar.edu.uade.go2rondas.domain.usecase.GetSiteConfigUseCase
+import ar.edu.uade.go2rondas.domain.usecase.ObserveSiteConfigUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveRobotSnapshotUseCase
 import ar.edu.uade.go2rondas.domain.usecase.SendCommandUseCase
 import ar.edu.uade.go2rondas.presentation.common.CommandFeedback
@@ -23,7 +23,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -57,14 +56,14 @@ sealed interface MissionsUiEffect {
 @HiltViewModel
 class MissionsViewModel @Inject constructor(
     observeRobotSnapshot: ObserveRobotSnapshotUseCase,
-    getSiteConfig: GetSiteConfigUseCase,
+    observeSiteConfig: ObserveSiteConfigUseCase,
     private val sendCommand: SendCommandUseCase
 ) : ViewModel() {
 
     private val selection = MutableStateFlow(MissionSelection())
 
     val uiState: StateFlow<UiState<MissionsData>> =
-        combine(observeRobotSnapshot(), flow { emit(getSiteConfig()) }, selection) { snapshot, site, selected ->
+        combine(observeRobotSnapshot(), observeSiteConfig(), selection) { snapshot, site, selected ->
             MissionsData(snapshot, site, selected)
         }
             .map<MissionsData, UiState<MissionsData>> { UiState.Success(it) }
