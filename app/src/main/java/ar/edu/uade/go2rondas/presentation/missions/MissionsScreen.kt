@@ -20,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -187,7 +188,10 @@ private fun ConfirmationSheet(data: MissionsData, onDismiss: () -> Unit, onStart
         stringResource(R.string.check_no_pending) to (snapshot.lastCommand?.status != CommandStatus.PENDING)
     )
     val availability = snapshot.availability
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ) {
         Column(
             Modifier
                 .fillMaxWidth()
