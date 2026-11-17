@@ -9,14 +9,17 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import javax.inject.Inject
 
-/** Las rondas del robot elegido: cada robot tiene su propio historial. */
+/**
+ * Las rondas del robot elegido en el sitio que tiene cargado: cada robot tiene su historial y,
+ * dentro de él, cada sitio el suyo. Así una ronda vieja nunca se dibuja sobre el plano de otro sitio.
+ */
 class ObserveMissionHistoryUseCase @Inject constructor(
     private val history: HistoryRepository,
     private val robots: RobotRepository
 ) {
     operator fun invoke(): Flow<List<MissionRecord>> =
-        combine(robots.observeActiveRobot(), history.observeMissions()) { robot, missions ->
-            missions.filter { it.robotId == robot?.id }
+        combine(robots.observeActiveRobot(), robots.observeSiteConfig(), history.observeMissions()) { robot, site, missions ->
+            missions.filter { it.robotId == robot?.id && it.siteId == site.siteId }
         }
 }
 

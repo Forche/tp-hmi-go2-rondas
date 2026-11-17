@@ -174,8 +174,9 @@ class RobotRepositoryImpl @Inject constructor(
 
     private suspend fun record(event: RobotEvent, robotId: String) = safely {
         when (event) {
+            // La ronda queda asociada al sitio que tiene cargado el robot en ese momento.
             is RobotEvent.MissionStarted -> history.insertMission(
-                newMissionEntity(event.missionId, robotId, event.type, event.total, event.timestampMillis)
+                newMissionEntity(event.missionId, robotId, site.value.siteId, event.type, event.total, event.timestampMillis)
             )
             is RobotEvent.CheckpointInspected -> history.insertCheckpointResult(event.result.toEntity())
             is RobotEvent.AlertRaised -> saveEvent(

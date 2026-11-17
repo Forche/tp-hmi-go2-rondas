@@ -10,10 +10,12 @@ import androidx.room.PrimaryKey
 // Los enums del dominio se guardan por nombre (String); el mapper los convierte.
 // Las entidades no salen de la capa de datos.
 
-@Entity(tableName = "missions")
+@Entity(tableName = "missions", indices = [Index("robotId", "siteId")])
 data class MissionEntity(
     @PrimaryKey val id: String,
     val robotId: String,
+    /** Sitio que tenía cargado el robot: el historial se muestra por robot y por sitio. */
+    val siteId: String,
     val type: String,
     val total: Int,
     val startedAt: Long,

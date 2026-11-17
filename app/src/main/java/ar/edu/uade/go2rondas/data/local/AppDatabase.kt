@@ -11,7 +11,7 @@ import ar.edu.uade.go2rondas.data.local.entity.MissionEntity
 
 @Database(
     entities = [MissionEntity::class, CheckpointResultEntity::class, EventEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

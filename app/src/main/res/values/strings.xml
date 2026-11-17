@@ -225,8 +225,8 @@
 
     <!-- Historial -->
     <string name="history_title">Historial</string>
-    <string name="history_subtitle">Rondas guardadas en este dispositivo</string>
-    <string name="history_empty">Todavía no hay rondas registradas</string>
+    <string name="history_subtitle">Rondas en %1$s</string>
+    <string name="history_empty">Todavía no hay rondas en %1$s</string>
     <string name="summary_title">Resumen de ronda</string>
     <string name="summary_time_range">%1$s – %2$s · %3$s</string>
     <string name="summary_in_progress">Desde %1$s · en curso</string>
