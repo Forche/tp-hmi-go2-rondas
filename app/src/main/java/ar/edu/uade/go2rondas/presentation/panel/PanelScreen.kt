@@ -23,10 +23,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.go2rondas.R
 import ar.edu.uade.go2rondas.core.model.UiState
+import ar.edu.uade.go2rondas.domain.model.CommandType
 import ar.edu.uade.go2rondas.domain.model.LinkState
 import ar.edu.uade.go2rondas.domain.model.OperationalState
 import ar.edu.uade.go2rondas.domain.model.RobotSnapshot
 import ar.edu.uade.go2rondas.domain.model.SiteConfig
+import ar.edu.uade.go2rondas.presentation.common.CommandFeedbackEffect
 import ar.edu.uade.go2rondas.presentation.common.batteryDetail
 import ar.edu.uade.go2rondas.presentation.common.batteryState
 import ar.edu.uade.go2rondas.presentation.common.checkpointStatuses
@@ -42,6 +44,7 @@ import ar.edu.uade.go2rondas.presentation.common.components.TelemetryCard
 import ar.edu.uade.go2rondas.presentation.common.formatElapsed
 import ar.edu.uade.go2rondas.presentation.common.labelRes
 import ar.edu.uade.go2rondas.presentation.common.linkState
+import ar.edu.uade.go2rondas.presentation.common.rememberMessageShower
 import ar.edu.uade.go2rondas.presentation.common.rememberNow
 import ar.edu.uade.go2rondas.presentation.common.temperatureLimit
 import ar.edu.uade.go2rondas.presentation.common.temperatureState
@@ -53,17 +56,39 @@ fun PanelScreen(
     viewModel: PanelViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    CommandFeedbackEffect(viewModel.feedback)
     PanelContent(
         state = state,
         now = rememberNow(),
-        actions = PanelActions(onOpenTelemetry = onOpenTelemetry, onOpenMissions = onOpenMissions)
+        actions = PanelActions(
+            onOpenTelemetry = onOpenTelemetry,
+            onOpenMissions = onOpenMissions,
+            onOpenControls = viewModel::onOpenControls,
+            onCloseControls = viewModel::onCloseControls,
+            onPause = viewModel::onPause,
+            onResume = viewModel::onResume,
+            onReturnToBase = viewModel::onReturnToBase,
+            onOperationalStop = viewModel::onOperationalStop,
+            onRequestCancel = viewModel::onRequestCancel,
+            onConfirmCancel = viewModel::onConfirmCancel,
+            onDismissCancel = viewModel::onDismissCancel
+        )
     )
 }
 
 /** Callbacks de la pantalla agrupados, para no pasar una lista larga de parámetros sueltos. */
 data class PanelActions(
     val onOpenTelemetry: () -> Unit,
-    val onOpenMissions: () -> Unit
+    val onOpenMissions: () -> Unit,
+    val onOpenControls: () -> Unit,
+    val onCloseControls: () -> Unit,
+    val onPause: () -> Unit,
+    val onResume: () -> Unit,
+    val onReturnToBase: () -> Unit,
+    val onOperationalStop: () -> Unit,
+    val onRequestCancel: () -> Unit,
+    val onConfirmCancel: () -> Unit,
+    val onDismissCancel: () -> Unit
 )
 
 @Composable
@@ -82,7 +107,11 @@ fun PanelContent(
         when (state) {
             UiState.Idle, UiState.Loading -> LoadingView()
             is UiState.Error -> ErrorView(state.message)
-            is UiState.Success -> PanelBody(state.data, now, actions)
+            is UiState.Success -> {
+                PanelBody(state.data, now, actions)
+                if (state.data.dialogs.controlsOpen) ControlSheet(state.data.snapshot, actions)
+                if (state.data.dialogs.confirmingCancel) CancelMissionDialog(actions)
+            }
         }
     }
 }
@@ -100,7 +129,7 @@ private fun PanelBody(data: PanelData, now: Long, actions: PanelActions) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         StatusRow(snapshot, now)
-        snapshot.lastCommand?.let { CommandStatusPill(it) }
+        LastCommand(snapshot)
         MissionProgress(snapshot, data.site)
         SiteMap(
             site = data.site,
@@ -146,12 +175,60 @@ private fun PanelBody(data: PanelData, now: Long, actions: PanelActions) {
         TextButton(onClick = actions.onOpenTelemetry) {
             Text(stringResource(R.string.panel_see_telemetry) + "  ›")
         }
-        if (telemetry?.state == OperationalState.AT_BASE) {
-            CommandButton(
-                text = stringResource(R.string.panel_choose_mission),
-                kind = ButtonKind.PRIMARY,
-                enabled = true,
-                onClick = actions.onOpenMissions
+        PanelButtons(snapshot, actions)
+    }
+}
+
+/** Acciones principales según el estado; el resto está en la hoja de controles. */
+@Composable
+private fun PanelButtons(snapshot: RobotSnapshot, actions: PanelActions) {
+    val state = snapshot.telemetry?.state ?: return
+    val availability = snapshot.availability
+    val showMessage = rememberMessageShower()
+    if (state == OperationalState.AT_BASE) {
+        CommandButton(
+            text = stringResource(R.string.panel_choose_mission),
+            kind = ButtonKind.PRIMARY,
+            enabled = true,
+            onClick = actions.onOpenMissions
+        )
+        return
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        val pauseOrResume = if (state == OperationalState.PAUSED || state == OperationalState.STOPPED) {
+            CommandType.RESUME to actions.onResume
+        } else {
+            CommandType.PAUSE to actions.onPause
+        }
+        val (type, onClick) = pauseOrResume
+        CommandButton(
+            text = stringResource(type.labelRes()),
+            kind = ButtonKind.SECONDARY,
+            enabled = availability.isEnabled(type),
+            onClick = onClick,
+            onDisabledClick = { availability.reason(type)?.let { showMessage(it.labelRes()) } },
+            modifier = Modifier.weight(1f)
+        )
+        CommandButton(
+            text = stringResource(R.string.panel_controls),
+            kind = ButtonKind.PRIMARY,
+            enabled = true,
+            onClick = actions.onOpenControls,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun LastCommand(snapshot: RobotSnapshot) {
+    val record = snapshot.lastCommand ?: return
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        CommandStatusPill(record)
+        record.rejectionReason?.let { reason ->
+            Text(
+                stringResource(R.string.rejection_reason, stringResource(reason.labelRes())),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
