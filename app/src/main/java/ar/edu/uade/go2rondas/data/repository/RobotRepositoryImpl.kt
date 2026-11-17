@@ -6,6 +6,7 @@ import ar.edu.uade.go2rondas.core.coroutines.ApplicationScope
 import ar.edu.uade.go2rondas.data.local.HistoryLocalDataSource
 import ar.edu.uade.go2rondas.data.mapper.newMissionEntity
 import ar.edu.uade.go2rondas.data.mapper.toEntity
+import ar.edu.uade.go2rondas.data.remote.MujocoRobotDataSource
 import ar.edu.uade.go2rondas.data.sim.DataCenterSite
 import ar.edu.uade.go2rondas.data.sim.SimulatedRobotDataSource
 import ar.edu.uade.go2rondas.data.source.RobotDataSource
@@ -45,13 +46,14 @@ import javax.inject.Singleton
 @Singleton
 class RobotRepositoryImpl @Inject constructor(
     private val simulator: SimulatedRobotDataSource,
+    private val mujoco: MujocoRobotDataSource,
     private val history: HistoryLocalDataSource,
     @param:ApplicationScope private val scope: CoroutineScope
 ) : RobotRepository {
 
     private val robots = listOf(
         Robot(id = SimulatedRobotDataSource.ROBOT_ID, name = "Go2-01", source = RobotSource.LOCAL_SIMULATOR),
-        Robot(id = "go2-02", name = "Go2-02", source = RobotSource.MUJOCO_SERVER, address = "192.168.0.20:8765")
+        Robot(id = MujocoRobotDataSource.ROBOT_ID, name = "Go2-02", source = RobotSource.MUJOCO_SERVER, address = mujoco.address)
     )
 
     private val activeRobot = MutableStateFlow<Robot?>(null)
@@ -101,7 +103,6 @@ class RobotRepositoryImpl @Inject constructor(
 
         val source = sourceFor(robot)
         activeSource = source
-        if (source == null) return
         // El simulador arranca de cero con cada proceso: una ronda abierta de antes ya no va a terminar.
         if (robot.source == RobotSource.LOCAL_SIMULATOR) {
             safely { history.closeOpenMissions(robot.id, System.currentTimeMillis(), MissionResult.ABORTED.name) }
@@ -119,10 +120,9 @@ class RobotRepositoryImpl @Inject constructor(
         }
     }
 
-    // El cliente del servidor MuJoCo todavía no está implementado: ese robot queda sin conexión.
-    private fun sourceFor(robot: Robot): RobotDataSource? = when (robot.source) {
+    private fun sourceFor(robot: Robot): RobotDataSource = when (robot.source) {
         RobotSource.LOCAL_SIMULATOR -> simulator
-        RobotSource.MUJOCO_SERVER -> null
+        RobotSource.MUJOCO_SERVER -> mujoco
     }
 
     override fun observeConnection(): Flow<ConnectionStatus> = connection
