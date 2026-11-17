@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -17,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -59,6 +62,7 @@ fun PanelScreen(
     onOpenMissions: () -> Unit,
     onOpenAlert: (String) -> Unit,
     onOpenMissionSummary: (String) -> Unit,
+    onOpenSimulator: () -> Unit,
     viewModel: PanelViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -71,6 +75,7 @@ fun PanelScreen(
             onOpenMissions = onOpenMissions,
             onOpenAlert = onOpenAlert,
             onOpenMissionSummary = onOpenMissionSummary,
+            onOpenSimulator = onOpenSimulator,
             onOpenControls = viewModel::onOpenControls,
             onCloseControls = viewModel::onCloseControls,
             onPause = viewModel::onPause,
@@ -90,6 +95,7 @@ data class PanelActions(
     val onOpenMissions: () -> Unit,
     val onOpenAlert: (String) -> Unit,
     val onOpenMissionSummary: (String) -> Unit,
+    val onOpenSimulator: () -> Unit,
     val onOpenControls: () -> Unit,
     val onCloseControls: () -> Unit,
     val onPause: () -> Unit,
@@ -112,7 +118,12 @@ fun PanelContent(
         RobotTopBar(
             title = stringResource(R.string.panel_title),
             snapshot = (state as? UiState.Success)?.data?.snapshot,
-            now = now
+            now = now,
+            actions = {
+                IconButton(onClick = actions.onOpenSimulator) {
+                    Icon(painterResource(R.drawable.ic_tune), contentDescription = stringResource(R.string.cd_open_simulator))
+                }
+            }
         )
         when (state) {
             UiState.Idle, UiState.Loading -> LoadingView()

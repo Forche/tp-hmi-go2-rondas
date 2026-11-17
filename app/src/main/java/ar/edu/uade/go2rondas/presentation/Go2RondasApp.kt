@@ -36,6 +36,7 @@ import ar.edu.uade.go2rondas.presentation.history.MissionSummaryScreen
 import ar.edu.uade.go2rondas.presentation.missions.MissionsScreen
 import ar.edu.uade.go2rondas.presentation.panel.PanelScreen
 import ar.edu.uade.go2rondas.presentation.robotselection.RobotSelectionScreen
+import ar.edu.uade.go2rondas.presentation.simulator.SimulatorScreen
 import ar.edu.uade.go2rondas.presentation.telemetry.TelemetryScreen
 
 /** Pestañas de la barra inferior. */
@@ -93,8 +94,12 @@ fun Go2RondasApp() {
                         onOpenTelemetry = { navController.navigate(Screen.Telemetry.route) },
                         onOpenMissions = { navController.openTab(AppTab.MISSIONS) },
                         onOpenAlert = { navController.navigate(Screen.AlertDetail.createRoute(it)) },
-                        onOpenMissionSummary = { navController.navigate(Screen.MissionSummary.createRoute(it)) }
+                        onOpenMissionSummary = { navController.navigate(Screen.MissionSummary.createRoute(it)) },
+                        onOpenSimulator = { navController.navigate(Screen.Simulator.route) }
                     )
+                }
+                composable(Screen.Simulator.route) {
+                    SimulatorScreen(onBack = { navController.popBackStack() })
                 }
                 composable(Screen.History.route) {
                     HistoryScreen(onOpenMission = { navController.navigate(Screen.MissionSummary.createRoute(it)) })
