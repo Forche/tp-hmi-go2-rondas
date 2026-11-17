@@ -122,7 +122,12 @@ fun SiteMap(
             drawCircle(fill, radius, center)
             when (rowStatus) {
                 CheckpointRowStatus.PENDING -> drawCircle(status.disabled, radius, center, style = Stroke(1.5.dp.toPx()))
-                CheckpointRowStatus.SKIPPED -> drawCircle(status.stale, radius, center, style = Stroke(1.5.dp.toPx()))
+                CheckpointRowStatus.SKIPPED -> {
+                    // Línea cruzada: el salteado no se confunde con un checkpoint pendiente.
+                    drawCircle(status.stale, radius, center, style = Stroke(1.5.dp.toPx()))
+                    val d = radius * 0.7f
+                    drawLine(status.stale, center + Offset(-d, d), center + Offset(d, -d), strokeWidth = 1.5.dp.toPx())
+                }
                 else -> Unit
             }
             drawCenteredLabel(textMeasurer, "${checkpoint.number}", center, numberLabel.copy(color = onFill))
