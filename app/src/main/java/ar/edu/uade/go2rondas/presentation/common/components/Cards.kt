@@ -225,14 +225,18 @@ fun MissionResult?.pillColors(): Pair<Color, Color> {
     return when (this) {
         MissionResult.COMPLETED -> status.okContainer to status.ok
         MissionResult.INTERRUPTED_LOW_BATTERY -> status.warningContainer to status.warning
-        MissionResult.CANCELLED -> status.staleContainer to status.stale
+        MissionResult.CANCELLED, MissionResult.ABORTED -> status.staleContainer to status.stale
         null -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.primary
     }
 }
 
 @Composable
-fun missionSummaryText(record: MissionRecord): String {
-    val base = stringResource(R.string.history_row_detail, formatDateTime(record.startedAtMillis), record.completed, record.total)
+fun missionSummaryText(record: MissionRecord, includeDate: Boolean = true): String {
+    val base = if (includeDate) {
+        stringResource(R.string.history_row_detail, formatDateTime(record.startedAtMillis), record.completed, record.total)
+    } else {
+        stringResource(R.string.history_row_counts, record.completed, record.total)
+    }
     val extras = buildList {
         if (record.anomalies > 0) add(stringResource(R.string.history_anomalies, record.anomalies))
         if (record.skipped > 0) add(stringResource(R.string.history_skipped, record.skipped))

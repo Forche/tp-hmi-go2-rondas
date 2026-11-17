@@ -41,4 +41,10 @@ data class CheckpointResult(
 
 enum class CheckpointStatus { OK, ANOMALY, SKIPPED }
 
-enum class MissionResult { COMPLETED, INTERRUPTED_LOW_BATTERY, CANCELLED }
+enum class MissionResult {
+    COMPLETED,
+    INTERRUPTED_LOW_BATTERY,
+    CANCELLED,
+    /** La ronda nunca recibió su fin (por ejemplo, se reinició el simulador). */
+    ABORTED
+}

@@ -129,5 +129,6 @@ fun MissionResult?.labelRes(): Int = when (this) {
     MissionResult.COMPLETED -> R.string.result_completed
     MissionResult.INTERRUPTED_LOW_BATTERY -> R.string.result_interrupted
     MissionResult.CANCELLED -> R.string.result_cancelled
+    MissionResult.ABORTED -> R.string.result_aborted
     null -> R.string.result_in_progress
 }

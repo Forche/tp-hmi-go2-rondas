@@ -32,6 +32,9 @@ interface MissionDao {
 
     @Query("UPDATE missions SET endedAt = :endedAt, result = :result WHERE id = :missionId")
     suspend fun finish(missionId: String, endedAt: Long, result: String): Int
+
+    @Query("UPDATE missions SET endedAt = :endedAt, result = :result WHERE robotId = :robotId AND endedAt IS NULL")
+    suspend fun closeOpen(robotId: String, endedAt: Long, result: String): Int
 }
 
 @Dao

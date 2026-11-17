@@ -36,6 +36,10 @@ class HistoryLocalDataSource @Inject constructor(
     suspend fun finishMission(missionId: String, endedAt: Long, result: String): Boolean =
         missionDao.finish(missionId, endedAt, result) > 0
 
+    /** Cierra las rondas que quedaron abiertas; devuelve cuántas eran. */
+    suspend fun closeOpenMissions(robotId: String, endedAt: Long, result: String): Int =
+        missionDao.closeOpen(robotId, endedAt, result)
+
     suspend fun insertCheckpointResult(result: CheckpointResultEntity) = checkpointResultDao.insert(result)
 
     suspend fun insertEvent(event: EventEntity) = eventDao.insert(event)

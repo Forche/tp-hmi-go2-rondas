@@ -17,6 +17,7 @@ import ar.edu.uade.go2rondas.domain.model.CommandStatus
 import ar.edu.uade.go2rondas.domain.model.ConnectionStatus
 import ar.edu.uade.go2rondas.domain.model.HistoryEvent
 import ar.edu.uade.go2rondas.domain.model.LinkState
+import ar.edu.uade.go2rondas.domain.model.MissionResult
 import ar.edu.uade.go2rondas.domain.model.Robot
 import ar.edu.uade.go2rondas.domain.model.RobotEvent
 import ar.edu.uade.go2rondas.domain.model.RobotSource
@@ -101,6 +102,10 @@ class RobotRepositoryImpl @Inject constructor(
         val source = sourceFor(robot)
         activeSource = source
         if (source == null) return
+        // El simulador arranca de cero con cada proceso: una ronda abierta de antes ya no va a terminar.
+        if (robot.source == RobotSource.LOCAL_SIMULATOR) {
+            safely { history.closeOpenMissions(robot.id, System.currentTimeMillis(), MissionResult.ABORTED.name) }
+        }
         source.start()
         collectJob = scope.launch {
             launch {

@@ -112,8 +112,10 @@
     <string name="result_completed">Completada</string>
     <string name="result_interrupted">Interrumpida</string>
     <string name="result_cancelled">Cancelada</string>
+    <string name="result_aborted">Sin cerrar</string>
     <string name="result_in_progress">En curso</string>
     <string name="history_row_detail">%1$s · %2$d/%3$d checkpoints</string>
+    <string name="history_row_counts">%1$d/%2$d checkpoints</string>
     <string name="history_no_anomalies">sin anomalías</string>
     <string name="history_anomalies">%1$d con anomalía</string>
     <string name="history_skipped">%1$d salteado(s)</string>
