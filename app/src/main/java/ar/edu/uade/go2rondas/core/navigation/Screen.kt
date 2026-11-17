@@ -10,4 +10,14 @@ sealed class Screen(val route: String) {
         const val ARG_ALERT_ID = "alertId"
         fun createRoute(alertId: String) = "alerts/$alertId"
     }
+    data object History : Screen("history")
+    data object MissionSummary : Screen("history/{missionId}") {
+        const val ARG_MISSION_ID = "missionId"
+        fun createRoute(missionId: String) = "history/$missionId"
+    }
+    data object CheckpointDetail : Screen("history/{missionId}/{checkpointId}") {
+        const val ARG_MISSION_ID = "missionId"
+        const val ARG_CHECKPOINT_ID = "checkpointId"
+        fun createRoute(missionId: String, checkpointId: String) = "history/$missionId/$checkpointId"
+    }
 }

@@ -223,6 +223,29 @@
     <string name="alert_current_reading">Lectura actual en %1$s</string>
     <string name="panel_view_alert">Ver alerta</string>
 
+    <!-- Historial -->
+    <string name="history_title">Historial</string>
+    <string name="history_subtitle">Rondas guardadas en este dispositivo</string>
+    <string name="history_empty">Todavía no hay rondas registradas</string>
+    <string name="summary_title">Resumen de ronda</string>
+    <string name="summary_time_range">%1$s – %2$s · %3$s</string>
+    <string name="summary_in_progress">Desde %1$s · en curso</string>
+    <string name="summary_checkpoints">Checkpoints</string>
+    <string name="summary_events">Eventos</string>
+    <string name="summary_no_events">Sin eventos registrados</string>
+    <string name="summary_not_found">La ronda no está en el historial</string>
+    <string name="checkpoint_detail_taken">Tomada a las %1$s · %2$s</string>
+    <string name="checkpoint_not_inspected">Este checkpoint no se inspeccionó en la ronda.</string>
+    <string name="event_alert">Alerta: %1$s (%2$s)</string>
+    <string name="event_alert_at">Alerta: %1$s (%2$s) en %3$s</string>
+    <string name="event_command">Orden «%1$s»: %2$s</string>
+    <string name="event_command_rejected">Orden «%1$s»: rechazada (%2$s)</string>
+    <string name="event_connection_lost">Se perdió la conexión</string>
+    <string name="event_connection_restored">Conexión recuperada después de %1$d s</string>
+    <string name="event_escalated">Escalado al técnico de guardia: %1$s</string>
+    <string name="panel_last_mission">Última ronda: %1$s</string>
+    <string name="panel_see_summary">Ver resumen</string>
+
     <!-- Avisos -->
     <string name="msg_command_rejected">%1$s: rechazada (%2$s)</string>
     <string name="msg_command_no_response">%1$s: sin respuesta. La orden no se reenvía sola.</string>
