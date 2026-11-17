@@ -47,7 +47,8 @@ fun HistoryScreen(
                 item {
                     Text(
                         stringResource(
-                            if (current.data.missions.isEmpty()) R.string.history_empty else R.string.history_subtitle
+                            if (current.data.missions.isEmpty()) R.string.history_empty else R.string.history_subtitle,
+                            current.data.siteName
                         ),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant

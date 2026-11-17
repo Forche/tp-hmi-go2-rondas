@@ -76,6 +76,7 @@ Con la forma A conviene subir la velocidad a x10 en el modo demo (ícono de ajus
 - **Cambiar de sitio sin recompilar:** el ejemplo `sitios/datacenter-edificio-b.json` es un data center de una sola planta con 5 checkpoints. Para probarlo:
   - Forma A: subir el archivo al emulador con `adb push sitios/datacenter-edificio-b.json /sdcard/Download/`. Después, con el robot en la base, ir a modo demo → *Cargar archivo…* → Descargas. El Panel muestra el plano nuevo y en Misiones sólo aparece la ronda completa. *Usar el de ejemplo* vuelve al Edificio A.
   - Forma B: levantar el servidor con `--sitio ../sitios/datacenter-edificio-b.json`. Al conectarse, la app recibe el plano nuevo y la vista 3D muestra la otra escena.
+  - El Historial y la "última ronda" son por sitio: con el Edificio B cargado aparecen vacíos, y al volver al de ejemplo reaparecen las rondas del Edificio A.
   - Un archivo inválido (por ejemplo, un checkpoint fuera del recorrido) se rechaza con el motivo, y el robot sigue con el sitio que tenía.
 
 - **Orden rechazada / sin respuesta (sólo forma A):** modo demo → *Rechazar la próxima orden* o *Ignorar la próxima orden*, y después mandar cualquier orden.

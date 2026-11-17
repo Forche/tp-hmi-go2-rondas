@@ -28,6 +28,7 @@ private object EventKind {
 fun MissionSummaryRow.toDomain() = MissionRecord(
     id = mission.id,
     robotId = mission.robotId,
+    siteId = mission.siteId,
     type = MissionType.valueOf(mission.type),
     startedAtMillis = mission.startedAt,
     endedAtMillis = mission.endedAt,
@@ -38,8 +39,8 @@ fun MissionSummaryRow.toDomain() = MissionRecord(
     skipped = skipped
 )
 
-fun newMissionEntity(id: String, robotId: String, type: MissionType, total: Int, startedAt: Long) =
-    MissionEntity(id = id, robotId = robotId, type = type.name, total = total, startedAt = startedAt)
+fun newMissionEntity(id: String, robotId: String, siteId: String, type: MissionType, total: Int, startedAt: Long) =
+    MissionEntity(id = id, robotId = robotId, siteId = siteId, type = type.name, total = total, startedAt = startedAt)
 
 fun CheckpointResultEntity.toDomain() = CheckpointResult(
     missionId = missionId,

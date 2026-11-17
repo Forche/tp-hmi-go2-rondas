@@ -1,0 +1,250 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "7cd95f1326be3dcca6e2530a4d98d612",
+    "entities": [
+      {
+        "tableName": "missions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `robotId` TEXT NOT NULL, `siteId` TEXT NOT NULL, `type` TEXT NOT NULL, `total` INTEGER NOT NULL, `startedAt` INTEGER NOT NULL, `endedAt` INTEGER, `result` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "robotId",
+            "columnName": "robotId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "siteId",
+            "columnName": "siteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "total",
+            "columnName": "total",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "startedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAt",
+            "columnName": "endedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "result",
+            "columnName": "result",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_missions_robotId_siteId",
+            "unique": false,
+            "columnNames": [
+              "robotId",
+              "siteId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_missions_robotId_siteId` ON `${TABLE_NAME}` (`robotId`, `siteId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "checkpoint_results",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `missionId` TEXT NOT NULL, `checkpointId` TEXT NOT NULL, `status` TEXT NOT NULL, `temperatureC` REAL, `humidityPct` REAL, `noiseDba` REAL, `noiseBaselineDba` REAL, `timestamp` INTEGER NOT NULL, FOREIGN KEY(`missionId`) REFERENCES `missions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "missionId",
+            "columnName": "missionId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "checkpointId",
+            "columnName": "checkpointId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "temperatureC",
+            "columnName": "temperatureC",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "humidityPct",
+            "columnName": "humidityPct",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "noiseDba",
+            "columnName": "noiseDba",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "noiseBaselineDba",
+            "columnName": "noiseBaselineDba",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_checkpoint_results_missionId",
+            "unique": false,
+            "columnNames": [
+              "missionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_checkpoint_results_missionId` ON `${TABLE_NAME}` (`missionId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "missions",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "missionId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "events",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `missionId` TEXT, `timestamp` INTEGER NOT NULL, `kind` TEXT NOT NULL, `alertCode` TEXT, `severity` TEXT, `checkpointId` TEXT, `commandType` TEXT, `commandStatus` TEXT, `rejectionReason` TEXT, `downtimeSeconds` INTEGER)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "missionId",
+            "columnName": "missionId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alertCode",
+            "columnName": "alertCode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "severity",
+            "columnName": "severity",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "checkpointId",
+            "columnName": "checkpointId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "commandType",
+            "columnName": "commandType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "commandStatus",
+            "columnName": "commandStatus",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rejectionReason",
+            "columnName": "rejectionReason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "downtimeSeconds",
+            "columnName": "downtimeSeconds",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_events_missionId",
+            "unique": false,
+            "columnNames": [
+              "missionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_events_missionId` ON `${TABLE_NAME}` (`missionId`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7cd95f1326be3dcca6e2530a4d98d612')"
+    ]
+  }
+}

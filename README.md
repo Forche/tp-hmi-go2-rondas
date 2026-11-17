@@ -109,13 +109,14 @@ Pantalla → ViewModel → UseCase → RobotRepository (interfaz) ← RobotRepos
 - **WebSocket con OkHttp y kotlinx.serialization** para Go2-02. El campo `type` de cada mensaje elige la clase; los campos y valores que la app no conoce se ignoran, así un servidor más nuevo no la rompe. Si el socket se cae, se reintenta cada 3 s; una orden enviada sin respuesta termina en *sin respuesta* por el mismo timeout del repositorio.
 - **El mapa viene del robot, no de la app.** Plano, checkpoints, recorrido, misiones y umbrales salen de un archivo de sitio ([`sitios/`](sitios/README.md)) que se le carga al robot. Al servidor se le pasa con `--sitio`, y al simulador local desde el modo demo. Cada robot le pasa a la app el que tiene. Así no puede pasar que la app muestre un mapa y el robot recorra otro, y cambiar de sitio no requiere recompilar.
 - **Reglas de habilitación en el dominio**, con tests. Cada orden deshabilitada explica por qué al tocarla.
+- **Historial por robot y por sitio.** Cada ronda guarda el sitio que tenía cargado el robot (`siteId`, base de datos versión 2 con su migración). El Historial y la "última ronda" del Panel muestran sólo las del robot elegido en su sitio actual, así una ronda nunca se dibuja sobre el plano de otro sitio. Las rondas anteriores a la migración quedan en el Edificio A, que era el único sitio.
 - **Room** porque el historial es relacional (ronda → resultados y eventos). Los contadores (inspeccionados, anomalías, salteados) se calculan en SQL. El esquema exportado está en `app/schemas/`.
 - **Formato de pantalla en presentación.** El proyecto de referencia pone el formato en el dominio; acá va en presentación (`presentation/common/Labels.kt`) porque el dominio no debe conocer cómo se muestran los datos. No se crearon modelos de UI aparte.
 
 ## Limitaciones
 
 - No se probó con un Go2 real. Los sitios de ejemplo son genéricos y los umbrales son valores de ejemplo.
-- Las zonas y los tipos de misión son un conjunto fijo (el archivo elige entre ellos). El historial no guarda en qué sitio se hizo cada ronda: después de cambiar de sitio, las rondas viejas se muestran sobre el plano nuevo.
+- Las zonas y los tipos de misión son un conjunto fijo (el archivo elige entre ellos).
 - Las fotos de los checkpoints son marcadores: el simulador no genera imágenes.
 - En el servidor MuJoCo el movimiento es cinemático: el modelo del Go2 se ubica sobre el recorrido, pero no camina con control de patas.
 - La conexión con el servidor no está cifrada ni autenticada (`ws://`, sólo en debug). Una instalación real usaría `wss://` con certificado.

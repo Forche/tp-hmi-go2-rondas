@@ -22,17 +22,20 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
-data class HistoryData(val snapshot: RobotSnapshot, val missions: List<MissionRecord>)
+data class HistoryData(val snapshot: RobotSnapshot, val siteName: String, val missions: List<MissionRecord>)
 
 /** Lista de rondas: Room vuelve a emitir cada vez que se guarda algo, sin recargar a mano. */
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
     observeRobotSnapshot: ObserveRobotSnapshotUseCase,
-    observeMissionHistory: ObserveMissionHistoryUseCase
+    observeMissionHistory: ObserveMissionHistoryUseCase,
+    observeSiteConfig: ObserveSiteConfigUseCase
 ) : ViewModel() {
 
     val uiState: StateFlow<UiState<HistoryData>> =
-        combine(observeRobotSnapshot(), observeMissionHistory()) { snapshot, missions -> HistoryData(snapshot, missions) }
+        combine(observeRobotSnapshot(), observeSiteConfig(), observeMissionHistory()) { snapshot, site, missions ->
+            HistoryData(snapshot, site.name, missions)
+        }
             .map<HistoryData, UiState<HistoryData>> { UiState.Success(it) }
             .catch { emit(UiState.Error(it.message ?: "Error")) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiState.Loading)

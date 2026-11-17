@@ -4,6 +4,7 @@ package ar.edu.uade.go2rondas.domain.model
 data class MissionRecord(
     val id: String,
     val robotId: String,
+    val siteId: String,
     val type: MissionType,
     val startedAtMillis: Long,
     val endedAtMillis: Long?,
