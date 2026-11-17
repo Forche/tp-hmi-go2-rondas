@@ -36,6 +36,8 @@ Tests unitarios (reglas de habilitación de órdenes, geometría del recorrido, 
 
 ### Modo demo (los 5 escenarios del TP)
 
+El paso a paso de cada prueba, con el simulador local y con el servidor MuJoCo, está en [PRUEBAS.md](PRUEBAS.md).
+
 El ícono de ajustes en la barra superior del Panel abre el **modo demo**. Ahí se elige la velocidad de la simulación (x1, x4, x10) y se provocan los escenarios:
 
 | Escenario | Cómo probarlo |
