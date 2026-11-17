@@ -18,7 +18,10 @@ def main():
     parser.add_argument("--viewer", action="store_true", help="abre la ventana de MuJoCo")
     parser.add_argument("--no-console", action="store_true", help="sin comandos por consola (para correr en segundo plano)")
     args = parser.parse_args()
-    asyncio.run(serve(args.host, args.port, os.path.abspath(args.model_dir), args.speed, args.viewer, not args.no_console))
+    try:
+        asyncio.run(serve(args.host, args.port, os.path.abspath(args.model_dir), args.speed, args.viewer, not args.no_console))
+    except KeyboardInterrupt:
+        print("Servidor detenido")
 
 
 if __name__ == "__main__":

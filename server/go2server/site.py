@@ -66,8 +66,38 @@ OBSTACLE_BOXES = [
 ]
 
 
+# Escena 3D: el subsuelo está 3 m más abajo y la escalera baja por x = 29.6 (tramo CP5 -> CP6).
+BASEMENT_DEPTH = 3.0
+STAIRS_TOP_Y = 13.0
+STAIRS_BOTTOM_Y = 19.0
+STAIRS_X = (28.6, 30.6)
+
+# Salas para la escena: (nombre, izquierda, arriba, ancho, alto, nivel)
+ROOMS = [
+    ("noc", 0.8, 2.2, 5.2, 12.0, "GROUND_FLOOR"),
+    ("sala", 6.8, 2.2, 19.6, 12.0, "GROUND_FLOOR"),
+    ("pasillo_frio", 9.2, 6.2, 12.0, 4.0, "GROUND_FLOOR"),
+    ("escalera_pb", 27.2, 2.2, 4.8, 12.0, "GROUND_FLOOR"),
+    ("sala_electrica", 6.8, 16.4, 19.6, 5.0, "BASEMENT"),
+    ("escalera_ss", 27.2, 16.4, 4.8, 5.0, "BASEMENT"),
+]
+
+
 def level_at(y):
     return "BASEMENT" if y >= BASEMENT_START_Y else "GROUND_FLOOR"
+
+
+def level_z(level):
+    return 0.0 if level == "GROUND_FLOOR" else -BASEMENT_DEPTH
+
+
+def floor_z(y):
+    """Altura del piso bajo el robot: en la escalera baja de forma pareja de un nivel al otro."""
+    if y <= STAIRS_TOP_Y:
+        return 0.0
+    if y >= STAIRS_BOTTOM_Y:
+        return -BASEMENT_DEPTH
+    return -BASEMENT_DEPTH * (y - STAIRS_TOP_Y) / (STAIRS_BOTTOM_Y - STAIRS_TOP_Y)
 
 
 class RoutePath:

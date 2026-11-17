@@ -99,6 +99,7 @@
     <string name="checkpoint_reading">%1$.1f °C · %2$.0f %% · %3$.0f dB</string>
     <string name="checkpoint_skipped_detail">No inspeccionado</string>
     <string name="map_base">Base</string>
+    <string name="map_tap_hint">Tocá un checkpoint inspeccionado para ver su medición.</string>
     <string name="cd_site_map">Plano del data center con los checkpoints y la posición del robot</string>
 
     <!-- Misiones -->

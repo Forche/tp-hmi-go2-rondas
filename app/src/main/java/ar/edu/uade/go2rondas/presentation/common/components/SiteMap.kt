@@ -3,11 +3,14 @@ package ar.edu.uade.go2rondas.presentation.common.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
@@ -18,6 +21,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -36,6 +40,7 @@ import ar.edu.uade.go2rondas.domain.model.SiteConfig
 /**
  * Plano esquemático del sitio dibujado desde la configuración (no es el mapa del LiDAR):
  * salas, filas de racks, recorrido, checkpoints con su estado y la posición del robot.
+ * Con [onCheckpointClick], tocar un checkpoint lo informa (el que llama decide si tiene algo para mostrar).
  */
 @Composable
 fun SiteMap(
@@ -43,8 +48,10 @@ fun SiteMap(
     checkpointStatus: (checkpointId: String) -> CheckpointRowStatus,
     robotPosition: PlanPoint?,
     robotStale: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onCheckpointClick: ((checkpointId: String) -> Unit)? = null
 ) {
+    val currentOnClick by rememberUpdatedState(onCheckpointClick)
     val textMeasurer = rememberTextMeasurer()
     val status = MaterialTheme.statusColors
     val scheme = MaterialTheme.colorScheme
@@ -65,6 +72,18 @@ fun SiteMap(
             .background(status.mapZone)
             .border(1.dp, scheme.outline, shape)
             .semantics { contentDescription = description }
+            .pointerInput(site) {
+                detectTapGestures { tap ->
+                    val onClick = currentOnClick ?: return@detectTapGestures
+                    val scale = size.width / site.width
+                    // El área de toque es más grande que el círculo dibujado: el dedo tapa el punto.
+                    site.checkpoints
+                        .map { it to (Offset(it.position.x * scale, it.position.y * scale) - tap).getDistance() }
+                        .filter { (_, distance) -> distance <= TOUCH_RADIUS_METERS * scale }
+                        .minByOrNull { (_, distance) -> distance }
+                        ?.let { (checkpoint, _) -> onClick(checkpoint.id) }
+                }
+            }
     ) {
         val scale = size.width / site.width
         fun at(point: PlanPoint) = Offset(point.x * scale, point.y * scale)
@@ -151,3 +170,5 @@ private fun DrawScope.drawCenteredLabel(measurer: TextMeasurer, text: String, ce
     val layout = measurer.measure(text, style)
     drawText(layout, topLeft = center - Offset(layout.size.width / 2f, layout.size.height / 2f))
 }
+
+private const val TOUCH_RADIUS_METERS = 1.8f

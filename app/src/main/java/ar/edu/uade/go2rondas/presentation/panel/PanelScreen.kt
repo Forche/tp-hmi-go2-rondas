@@ -62,6 +62,7 @@ fun PanelScreen(
     onOpenMissions: () -> Unit,
     onOpenAlert: (String) -> Unit,
     onOpenMissionSummary: (String) -> Unit,
+    onOpenCheckpoint: (missionId: String, checkpointId: String) -> Unit,
     onOpenSimulator: () -> Unit,
     viewModel: PanelViewModel = hiltViewModel()
 ) {
@@ -75,6 +76,7 @@ fun PanelScreen(
             onOpenMissions = onOpenMissions,
             onOpenAlert = onOpenAlert,
             onOpenMissionSummary = onOpenMissionSummary,
+            onOpenCheckpoint = onOpenCheckpoint,
             onOpenSimulator = onOpenSimulator,
             onOpenControls = viewModel::onOpenControls,
             onCloseControls = viewModel::onCloseControls,
@@ -95,6 +97,7 @@ data class PanelActions(
     val onOpenMissions: () -> Unit,
     val onOpenAlert: (String) -> Unit,
     val onOpenMissionSummary: (String) -> Unit,
+    val onOpenCheckpoint: (missionId: String, checkpointId: String) -> Unit,
     val onOpenSimulator: () -> Unit,
     val onOpenControls: () -> Unit,
     val onCloseControls: () -> Unit,
@@ -167,8 +170,23 @@ private fun PanelBody(data: PanelData, now: Long, actions: PanelActions) {
                 telemetry?.mission?.takeIf { telemetry.state != OperationalState.RETURNING }
             ),
             robotPosition = telemetry?.location?.position,
-            robotStale = stale
+            robotStale = stale,
+            // Sólo los checkpoints ya inspeccionados de la ronda en curso tienen una medición para mostrar.
+            onCheckpointClick = telemetry?.mission?.missionId?.let { missionId ->
+                { checkpointId ->
+                    if (data.missionResults.any { it.checkpointId == checkpointId }) {
+                        actions.onOpenCheckpoint(missionId, checkpointId)
+                    }
+                }
+            }
         )
+        if (data.missionResults.isNotEmpty()) {
+            Text(
+                stringResource(R.string.map_tap_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             val cardModifier = Modifier.weight(1f)
             if (telemetry != null) {
