@@ -30,6 +30,9 @@ import ar.edu.uade.go2rondas.core.navigation.Screen
 import ar.edu.uade.go2rondas.presentation.alerts.AlertDetailScreen
 import ar.edu.uade.go2rondas.presentation.alerts.AlertsScreen
 import ar.edu.uade.go2rondas.presentation.common.LocalSnackbarHostState
+import ar.edu.uade.go2rondas.presentation.history.CheckpointDetailScreen
+import ar.edu.uade.go2rondas.presentation.history.HistoryScreen
+import ar.edu.uade.go2rondas.presentation.history.MissionSummaryScreen
 import ar.edu.uade.go2rondas.presentation.missions.MissionsScreen
 import ar.edu.uade.go2rondas.presentation.panel.PanelScreen
 import ar.edu.uade.go2rondas.presentation.robotselection.RobotSelectionScreen
@@ -39,7 +42,8 @@ import ar.edu.uade.go2rondas.presentation.telemetry.TelemetryScreen
 enum class AppTab(val screen: Screen, @param:StringRes val label: Int, @param:DrawableRes val icon: Int) {
     PANEL(Screen.Panel, R.string.nav_panel, R.drawable.ic_nav_panel),
     MISSIONS(Screen.Missions, R.string.nav_missions, R.drawable.ic_nav_missions),
-    ALERTS(Screen.Alerts, R.string.nav_alerts, R.drawable.ic_nav_alerts)
+    ALERTS(Screen.Alerts, R.string.nav_alerts, R.drawable.ic_nav_alerts),
+    HISTORY(Screen.History, R.string.nav_history, R.drawable.ic_nav_history)
 }
 
 /** Cambia de pestaña sin apilar pantallas: vuelve al Panel y conserva el estado de cada pestaña. */
@@ -88,8 +92,32 @@ fun Go2RondasApp() {
                     PanelScreen(
                         onOpenTelemetry = { navController.navigate(Screen.Telemetry.route) },
                         onOpenMissions = { navController.openTab(AppTab.MISSIONS) },
-                        onOpenAlert = { navController.navigate(Screen.AlertDetail.createRoute(it)) }
+                        onOpenAlert = { navController.navigate(Screen.AlertDetail.createRoute(it)) },
+                        onOpenMissionSummary = { navController.navigate(Screen.MissionSummary.createRoute(it)) }
                     )
+                }
+                composable(Screen.History.route) {
+                    HistoryScreen(onOpenMission = { navController.navigate(Screen.MissionSummary.createRoute(it)) })
+                }
+                composable(
+                    route = Screen.MissionSummary.route,
+                    arguments = listOf(navArgument(Screen.MissionSummary.ARG_MISSION_ID) { type = NavType.StringType })
+                ) {
+                    MissionSummaryScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenCheckpoint = { missionId, checkpointId ->
+                            navController.navigate(Screen.CheckpointDetail.createRoute(missionId, checkpointId))
+                        }
+                    )
+                }
+                composable(
+                    route = Screen.CheckpointDetail.route,
+                    arguments = listOf(
+                        navArgument(Screen.CheckpointDetail.ARG_MISSION_ID) { type = NavType.StringType },
+                        navArgument(Screen.CheckpointDetail.ARG_CHECKPOINT_ID) { type = NavType.StringType }
+                    )
+                ) {
+                    CheckpointDetailScreen(onBack = { navController.popBackStack() })
                 }
                 composable(Screen.Alerts.route) {
                     AlertsScreen(onOpenAlert = { navController.navigate(Screen.AlertDetail.createRoute(it)) })

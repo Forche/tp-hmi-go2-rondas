@@ -44,6 +44,7 @@ import ar.edu.uade.go2rondas.presentation.common.components.RobotTopBar
 import ar.edu.uade.go2rondas.presentation.common.components.SiteMap
 import ar.edu.uade.go2rondas.presentation.common.components.StatusChip
 import ar.edu.uade.go2rondas.presentation.common.components.TelemetryCard
+import ar.edu.uade.go2rondas.presentation.common.components.missionSummaryText
 import ar.edu.uade.go2rondas.presentation.common.formatElapsed
 import ar.edu.uade.go2rondas.presentation.common.labelRes
 import ar.edu.uade.go2rondas.presentation.common.linkState
@@ -57,6 +58,7 @@ fun PanelScreen(
     onOpenTelemetry: () -> Unit,
     onOpenMissions: () -> Unit,
     onOpenAlert: (String) -> Unit,
+    onOpenMissionSummary: (String) -> Unit,
     viewModel: PanelViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -68,6 +70,7 @@ fun PanelScreen(
             onOpenTelemetry = onOpenTelemetry,
             onOpenMissions = onOpenMissions,
             onOpenAlert = onOpenAlert,
+            onOpenMissionSummary = onOpenMissionSummary,
             onOpenControls = viewModel::onOpenControls,
             onCloseControls = viewModel::onCloseControls,
             onPause = viewModel::onPause,
@@ -86,6 +89,7 @@ data class PanelActions(
     val onOpenTelemetry: () -> Unit,
     val onOpenMissions: () -> Unit,
     val onOpenAlert: (String) -> Unit,
+    val onOpenMissionSummary: (String) -> Unit,
     val onOpenControls: () -> Unit,
     val onCloseControls: () -> Unit,
     val onPause: () -> Unit,
@@ -143,6 +147,7 @@ private fun PanelBody(data: PanelData, now: Long, actions: PanelActions) {
             AlertCard(alert, checkpointLabel(data.site, alert.checkpointId), onClick = { actions.onOpenAlert(alert.id) })
         }
         MissionProgress(snapshot, data.site)
+        LastMission(data, actions)
         SiteMap(
             site = data.site,
             checkpointStatus = checkpointStatuses(data.missionResults, telemetry?.mission),
@@ -248,6 +253,24 @@ private fun PanelButtons(snapshot: RobotSnapshot, actions: PanelActions) {
             onClick = actions.onOpenControls,
             modifier = Modifier.weight(1f)
         )
+    }
+}
+
+/** Con el robot en la base, ofrece el resumen de la última ronda terminada. */
+@Composable
+private fun LastMission(data: PanelData, actions: PanelActions) {
+    val record = data.lastMission ?: return
+    if (data.snapshot.telemetry?.state != OperationalState.AT_BASE || record.result == null) return
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            stringResource(R.string.panel_last_mission, missionSummaryText(record)),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(onClick = { actions.onOpenMissionSummary(record.id) }) {
+            Text(stringResource(R.string.panel_see_summary))
+        }
     }
 }
 
