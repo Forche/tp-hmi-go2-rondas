@@ -36,6 +36,7 @@ import ar.edu.uade.go2rondas.presentation.history.MissionSummaryScreen
 import ar.edu.uade.go2rondas.presentation.missions.MissionsScreen
 import ar.edu.uade.go2rondas.presentation.panel.PanelScreen
 import ar.edu.uade.go2rondas.presentation.robotselection.RobotSelectionScreen
+import ar.edu.uade.go2rondas.presentation.simulator.SimulatorScreen
 import ar.edu.uade.go2rondas.presentation.telemetry.TelemetryScreen
 
 /** Pestañas de la barra inferior. */
@@ -46,11 +47,21 @@ enum class AppTab(val screen: Screen, @param:StringRes val label: Int, @param:Dr
     HISTORY(Screen.History, R.string.nav_history, R.drawable.ic_nav_history)
 }
 
-/** Cambia de pestaña sin apilar pantallas: vuelve al Panel y conserva el estado de cada pestaña. */
-private fun NavHostController.openTab(tab: AppTab) = navigate(tab.screen.route) {
-    popUpTo(Screen.Panel.route) { saveState = true }
-    launchSingleTop = true
-    restoreState = true
+/**
+ * Cambia de pestaña sin apilar pantallas. El Panel siempre está en la pila, así que para ir a él
+ * alcanza con volver hasta su entrada: navegar con restoreState restauraría la pantalla de detalle
+ * que se acaba de guardar al salir.
+ */
+private fun NavHostController.openTab(tab: AppTab) {
+    if (tab == AppTab.PANEL) {
+        popBackStack(Screen.Panel.route, inclusive = false)
+        return
+    }
+    navigate(tab.screen.route) {
+        popUpTo(Screen.Panel.route) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
 }
 
 @Composable
@@ -93,8 +104,12 @@ fun Go2RondasApp() {
                         onOpenTelemetry = { navController.navigate(Screen.Telemetry.route) },
                         onOpenMissions = { navController.openTab(AppTab.MISSIONS) },
                         onOpenAlert = { navController.navigate(Screen.AlertDetail.createRoute(it)) },
-                        onOpenMissionSummary = { navController.navigate(Screen.MissionSummary.createRoute(it)) }
+                        onOpenMissionSummary = { navController.navigate(Screen.MissionSummary.createRoute(it)) },
+                        onOpenSimulator = { navController.navigate(Screen.Simulator.route) }
                     )
+                }
+                composable(Screen.Simulator.route) {
+                    SimulatorScreen(onBack = { navController.popBackStack() })
                 }
                 composable(Screen.History.route) {
                     HistoryScreen(onOpenMission = { navController.navigate(Screen.MissionSummary.createRoute(it)) })

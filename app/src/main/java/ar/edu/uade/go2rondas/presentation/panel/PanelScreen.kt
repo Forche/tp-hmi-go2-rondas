@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -17,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -59,6 +62,7 @@ fun PanelScreen(
     onOpenMissions: () -> Unit,
     onOpenAlert: (String) -> Unit,
     onOpenMissionSummary: (String) -> Unit,
+    onOpenSimulator: () -> Unit,
     viewModel: PanelViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -71,6 +75,7 @@ fun PanelScreen(
             onOpenMissions = onOpenMissions,
             onOpenAlert = onOpenAlert,
             onOpenMissionSummary = onOpenMissionSummary,
+            onOpenSimulator = onOpenSimulator,
             onOpenControls = viewModel::onOpenControls,
             onCloseControls = viewModel::onCloseControls,
             onPause = viewModel::onPause,
@@ -90,6 +95,7 @@ data class PanelActions(
     val onOpenMissions: () -> Unit,
     val onOpenAlert: (String) -> Unit,
     val onOpenMissionSummary: (String) -> Unit,
+    val onOpenSimulator: () -> Unit,
     val onOpenControls: () -> Unit,
     val onCloseControls: () -> Unit,
     val onPause: () -> Unit,
@@ -112,7 +118,12 @@ fun PanelContent(
         RobotTopBar(
             title = stringResource(R.string.panel_title),
             snapshot = (state as? UiState.Success)?.data?.snapshot,
-            now = now
+            now = now,
+            actions = {
+                IconButton(onClick = actions.onOpenSimulator) {
+                    Icon(painterResource(R.drawable.ic_tune), contentDescription = stringResource(R.string.cd_open_simulator))
+                }
+            }
         )
         when (state) {
             UiState.Idle, UiState.Loading -> LoadingView()
@@ -150,7 +161,11 @@ private fun PanelBody(data: PanelData, now: Long, actions: PanelActions) {
         LastMission(data, actions)
         SiteMap(
             site = data.site,
-            checkpointStatus = checkpointStatuses(data.missionResults, telemetry?.mission),
+            // Mientras regresa no hay checkpoint en curso, aunque la ronda tenga pendientes.
+            checkpointStatus = checkpointStatuses(
+                data.missionResults,
+                telemetry?.mission?.takeIf { telemetry.state != OperationalState.RETURNING }
+            ),
             robotPosition = telemetry?.location?.position,
             robotStale = stale
         )
@@ -192,14 +207,15 @@ private fun PanelBody(data: PanelData, now: Long, actions: PanelActions) {
         TextButton(onClick = actions.onOpenTelemetry) {
             Text(stringResource(R.string.panel_see_telemetry) + "  ›")
         }
-        PanelButtons(snapshot, actions)
+        PanelButtons(snapshot, data.site.thresholds.batteryWarningPct, actions)
     }
 }
 
 /** Acciones principales según el estado; el resto está en la hoja de controles. */
 @Composable
-private fun PanelButtons(snapshot: RobotSnapshot, actions: PanelActions) {
-    val state = snapshot.telemetry?.state ?: return
+private fun PanelButtons(snapshot: RobotSnapshot, batteryWarningPct: Int, actions: PanelActions) {
+    val telemetry = snapshot.telemetry ?: return
+    val state = telemetry.state
     val availability = snapshot.availability
     val showMessage = rememberMessageShower()
     if (state == OperationalState.AT_BASE) {
@@ -209,6 +225,28 @@ private fun PanelButtons(snapshot: RobotSnapshot, actions: PanelActions) {
             enabled = true,
             onClick = actions.onOpenMissions
         )
+        return
+    }
+    // Escenario 2: con batería baja, volver a la base pasa a ser la acción principal.
+    val lowBattery = telemetry.battery.percent < batteryWarningPct && state != OperationalState.RETURNING
+    if (lowBattery) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CommandButton(
+                text = stringResource(R.string.command_return),
+                kind = ButtonKind.PRIMARY,
+                enabled = availability.isEnabled(CommandType.RETURN_TO_BASE),
+                onClick = actions.onReturnToBase,
+                onDisabledClick = { availability.reason(CommandType.RETURN_TO_BASE)?.let { showMessage(it.labelRes()) } },
+                modifier = Modifier.weight(1f)
+            )
+            CommandButton(
+                text = stringResource(R.string.panel_controls),
+                kind = ButtonKind.SECONDARY,
+                enabled = true,
+                onClick = actions.onOpenControls,
+                modifier = Modifier.weight(1f)
+            )
+        }
         return
     }
     val decision = snapshot.pendingDecision
