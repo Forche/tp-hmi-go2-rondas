@@ -45,7 +45,12 @@ class RoutePath(private val points: List<PlanPoint>) {
     }
 
     /** Distancia desde la base hasta el punto del recorrido más cercano a [point]. */
-    fun distanceOf(point: PlanPoint): Double {
+    fun distanceOf(point: PlanPoint): Double = closest(point).first
+
+    /** A cuántos metros del recorrido queda [point]. */
+    fun gapTo(point: PlanPoint): Double = closest(point).second
+
+    private fun closest(point: PlanPoint): Pair<Double, Double> {
         var best = 0.0
         var bestGap = Double.MAX_VALUE
         for (i in 0 until points.size - 1) {
@@ -64,6 +69,6 @@ class RoutePath(private val points: List<PlanPoint>) {
                 best = cumulative[i] + t * hypot(dx, dy)
             }
         }
-        return best
+        return best to bestGap
     }
 }

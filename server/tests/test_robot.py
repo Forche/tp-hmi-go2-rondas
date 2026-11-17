@@ -1,13 +1,14 @@
 import random
 import unittest
 
+from go2server import site
 from go2server.robot import Robot
 
 
 class RobotTest(unittest.TestCase):
 
     def setUp(self):
-        self.robot = Robot("go2-02", random.Random(42))
+        self.robot = Robot("go2-02", site.load(), random.Random(42))
         self.events = []
 
     def run_until(self, condition, max_seconds=3000):

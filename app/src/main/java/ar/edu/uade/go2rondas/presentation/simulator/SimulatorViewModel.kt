@@ -5,9 +5,13 @@ import androidx.lifecycle.viewModelScope
 import ar.edu.uade.go2rondas.core.model.UiState
 import ar.edu.uade.go2rondas.domain.model.RobotSnapshot
 import ar.edu.uade.go2rondas.domain.model.SimulationScenario
+import ar.edu.uade.go2rondas.domain.model.SiteLoadResult
+import ar.edu.uade.go2rondas.domain.usecase.LoadSimulatorSiteUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveRobotSnapshotUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveSimulationAvailableUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveSimulationTimeScaleUseCase
+import ar.edu.uade.go2rondas.domain.usecase.ObserveSiteConfigUseCase
+import ar.edu.uade.go2rondas.domain.usecase.ResetSimulatorSiteUseCase
 import ar.edu.uade.go2rondas.domain.usecase.SetSimulationTimeScaleUseCase
 import ar.edu.uade.go2rondas.domain.usecase.TriggerSimulationScenarioUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,11 +30,13 @@ import javax.inject.Inject
 data class SimulatorData(
     val snapshot: RobotSnapshot,
     val available: Boolean,
-    val timeScale: Int
+    val timeScale: Int,
+    val siteName: String
 )
 
 sealed interface SimulatorUiEffect {
     data class Triggered(val scenario: SimulationScenario) : SimulatorUiEffect
+    data class SiteLoaded(val result: SiteLoadResult) : SimulatorUiEffect
 }
 
 @HiltViewModel
@@ -39,12 +45,20 @@ class SimulatorViewModel @Inject constructor(
     observeSimulationAvailable: ObserveSimulationAvailableUseCase,
     observeTimeScale: ObserveSimulationTimeScaleUseCase,
     private val setTimeScale: SetSimulationTimeScaleUseCase,
-    private val triggerScenario: TriggerSimulationScenarioUseCase
+    private val triggerScenario: TriggerSimulationScenarioUseCase,
+    observeSiteConfig: ObserveSiteConfigUseCase,
+    private val loadSite: LoadSimulatorSiteUseCase,
+    private val resetSite: ResetSimulatorSiteUseCase
 ) : ViewModel() {
 
     val uiState: StateFlow<UiState<SimulatorData>> =
-        combine(observeRobotSnapshot(), observeSimulationAvailable(), observeTimeScale()) { snapshot, available, scale ->
-            SimulatorData(snapshot, available, scale)
+        combine(
+            observeRobotSnapshot(),
+            observeSimulationAvailable(),
+            observeTimeScale(),
+            observeSiteConfig()
+        ) { snapshot, available, scale, site ->
+            SimulatorData(snapshot, available, scale, site.name)
         }
             .map<SimulatorData, UiState<SimulatorData>> { UiState.Success(it) }
             .catch { emit(UiState.Error(it.message ?: "Error")) }
@@ -55,6 +69,15 @@ class SimulatorViewModel @Inject constructor(
 
     fun onTimeScaleSelected(scale: Int) {
         viewModelScope.launch { setTimeScale(scale) }
+    }
+
+    /** [documentUri]: el archivo que eligió el operador en el selector de documentos. */
+    fun onSiteFileChosen(documentUri: String) {
+        viewModelScope.launch { _effects.emit(SimulatorUiEffect.SiteLoaded(loadSite(documentUri))) }
+    }
+
+    fun onResetSite() {
+        viewModelScope.launch { _effects.emit(SimulatorUiEffect.SiteLoaded(resetSite())) }
     }
 
     fun onTrigger(scenario: SimulationScenario) {

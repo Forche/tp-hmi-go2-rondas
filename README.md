@@ -80,7 +80,8 @@ ar.edu.uade.go2rondas
 │   └── usecase/     casos de uso + EvaluateCommandAvailabilityUseCase (reglas de habilitación)
 ├── data/
 │   ├── source/      RobotDataSource (una implementación por tipo de robot)
-│   ├── sim/         RobotSimulator (motor), SimulatedRobotDataSource (enlace), DataCenterSite, RoutePath
+│   ├── sim/         RobotSimulator (motor), SimulatedRobotDataSource (enlace), RoutePath
+│   ├── site/        archivo de sitio: DTO, lectura y validación (SiteFile), copias guardadas (SiteFileStore)
 │   ├── remote/      MujocoRobotDataSource (WebSocket con OkHttp) y dto/ (contrato JSON)
 │   ├── local/       Room: AppDatabase, entidades, DAOs, HistoryLocalDataSource
 │   ├── mapper/      Entity ↔ dominio, mensajes JSON ↔ dominio
@@ -106,13 +107,15 @@ Pantalla → ViewModel → UseCase → RobotRepository (interfaz) ← RobotRepos
 - **Órdenes en el scope de la aplicación**, con timeout de 5 s: si el operador cambia de pantalla, la orden igual termina en *confirmada*, *rechazada* o *sin respuesta*. La app no reenvía órdenes sola.
 - **Conexión deducida** por la antigüedad del último dato: el robot no avisa que se desconectó. Vale igual para el simulador y para el servidor MuJoCo.
 - **WebSocket con OkHttp y kotlinx.serialization** para Go2-02. El campo `type` de cada mensaje elige la clase; los campos y valores que la app no conoce se ignoran, así un servidor más nuevo no la rompe. Si el socket se cae, se reintenta cada 3 s; una orden enviada sin respuesta termina en *sin respuesta* por el mismo timeout del repositorio.
+- **El mapa viene del robot, no de la app.** Plano, checkpoints, recorrido, misiones y umbrales salen de un archivo de sitio ([`sitios/`](sitios/README.md)) que se le carga al robot. Al servidor se le pasa con `--sitio`, y al simulador local desde el modo demo. Cada robot le pasa a la app el que tiene. Así no puede pasar que la app muestre un mapa y el robot recorra otro, y cambiar de sitio no requiere recompilar.
 - **Reglas de habilitación en el dominio**, con tests. Cada orden deshabilitada explica por qué al tocarla.
 - **Room** porque el historial es relacional (ronda → resultados y eventos). Los contadores (inspeccionados, anomalías, salteados) se calculan en SQL. El esquema exportado está en `app/schemas/`.
 - **Formato de pantalla en presentación.** El proyecto de referencia pone el formato en el dominio; acá va en presentación (`presentation/common/Labels.kt`) porque el dominio no debe conocer cómo se muestran los datos. No se crearon modelos de UI aparte.
 
 ## Limitaciones
 
-- No se probó con un Go2 real. El sitio (data center) es genérico y los umbrales son valores de ejemplo.
+- No se probó con un Go2 real. Los sitios de ejemplo son genéricos y los umbrales son valores de ejemplo.
+- Las zonas y los tipos de misión son un conjunto fijo (el archivo elige entre ellos). El historial no guarda en qué sitio se hizo cada ronda: después de cambiar de sitio, las rondas viejas se muestran sobre el plano nuevo.
 - Las fotos de los checkpoints son marcadores: el simulador no genera imágenes.
 - En el servidor MuJoCo el movimiento es cinemático: el modelo del Go2 se ubica sobre el recorrido, pero no camina con control de patas.
 - La conexión con el servidor no está cifrada ni autenticada (`ws://`, sólo en debug). Una instalación real usaría `wss://` con certificado.

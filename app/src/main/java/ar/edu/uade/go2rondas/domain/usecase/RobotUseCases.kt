@@ -19,8 +19,8 @@ class ConnectRobotUseCase @Inject constructor(private val repository: RobotRepos
     suspend operator fun invoke(robotId: String) = repository.connect(robotId)
 }
 
-class GetSiteConfigUseCase @Inject constructor(private val repository: RobotRepository) {
-    suspend operator fun invoke(): SiteConfig = repository.getSiteConfig()
+class ObserveSiteConfigUseCase @Inject constructor(private val repository: RobotRepository) {
+    operator fun invoke(): Flow<SiteConfig> = repository.observeSiteConfig()
 }
 
 /** Estado completo del robot activo, con las órdenes habilitadas ya calculadas. */

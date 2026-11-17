@@ -1,5 +1,6 @@
 package ar.edu.uade.go2rondas.data.sim
 
+import ar.edu.uade.go2rondas.data.site.TestSites
 import ar.edu.uade.go2rondas.domain.model.AlertCode
 import ar.edu.uade.go2rondas.domain.model.AlertSeverity
 import ar.edu.uade.go2rondas.domain.model.CheckpointStatus
@@ -20,7 +21,8 @@ import kotlin.random.Random
 
 class RobotSimulatorTest {
 
-    private val simulator = RobotSimulator(DataCenterSite.config, "go2-01", Random(42)) { 0L }
+    private val site = TestSites.load()
+    private val simulator = RobotSimulator(site.config, site.simulation!!, "go2-01", Random(42)) { 0L }
     private val events = mutableListOf<RobotEvent>()
 
     private fun runUntil(maxSeconds: Int = 3_000, condition: () -> Boolean) {

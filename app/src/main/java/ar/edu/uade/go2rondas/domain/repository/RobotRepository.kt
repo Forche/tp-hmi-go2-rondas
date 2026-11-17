@@ -24,6 +24,8 @@ interface RobotRepository {
     fun observeAlerts(): Flow<List<Alert>>
     fun observeLastCommand(): Flow<CommandRecord?>
 
+    /** Mapa del robot activo; cambia si se elige otro robot o si se le carga otro sitio. */
+    fun observeSiteConfig(): Flow<SiteConfig>
     suspend fun getSiteConfig(): SiteConfig
 
     /** Envía la orden y espera la respuesta; si no llega a tiempo devuelve [CommandOutcome.NoResponse]. */

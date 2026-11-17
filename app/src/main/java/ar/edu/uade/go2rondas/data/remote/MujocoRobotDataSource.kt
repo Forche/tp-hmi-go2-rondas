@@ -12,7 +12,10 @@ import ar.edu.uade.go2rondas.data.remote.dto.CommandResponseDto
 import ar.edu.uade.go2rondas.data.remote.dto.EventDto
 import ar.edu.uade.go2rondas.data.remote.dto.ServerMessage
 import ar.edu.uade.go2rondas.data.remote.dto.TelemetryDto
-import ar.edu.uade.go2rondas.data.sim.DataCenterSite
+import ar.edu.uade.go2rondas.data.remote.dto.SiteMessageDto
+import ar.edu.uade.go2rondas.data.site.InvalidSiteException
+import ar.edu.uade.go2rondas.data.site.SiteFile.toDefinition
+import ar.edu.uade.go2rondas.data.site.SiteFileStore
 import ar.edu.uade.go2rondas.data.source.RobotDataSource
 import ar.edu.uade.go2rondas.domain.model.Alert
 import ar.edu.uade.go2rondas.domain.model.Command
@@ -30,6 +33,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -53,6 +57,7 @@ import javax.inject.Singleton
 class MujocoRobotDataSource @Inject constructor(
     private val client: OkHttpClient,
     @param:MujocoServerAddress val address: String,
+    private val siteStore: SiteFileStore,
     @param:ApplicationScope private val scope: CoroutineScope
 ) : RobotDataSource {
 
@@ -60,6 +65,8 @@ class MujocoRobotDataSource @Inject constructor(
     private val _telemetry = MutableSharedFlow<Telemetry>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private val _alerts = MutableStateFlow<List<Alert>>(emptyList())
     private val _events = MutableSharedFlow<RobotEvent>(extraBufferCapacity = 64)
+    // Hasta que el robot mande su mapa: la última copia recibida o, la primera vez, el sitio de ejemplo.
+    private val _site = MutableStateFlow((siteStore.loadReceivedSite(ROBOT_ID) ?: siteStore.defaultSite()).config)
 
     /** Órdenes enviadas que esperan su command_response, por id. */
     private val pending = ConcurrentHashMap<String, CompletableDeferred<CommandOutcome>>()
@@ -76,6 +83,7 @@ class MujocoRobotDataSource @Inject constructor(
     override val telemetry: Flow<Telemetry> = _telemetry.asSharedFlow()
     override val alerts: Flow<List<Alert>> = _alerts.asStateFlow()
     override val events: Flow<RobotEvent> = _events.asSharedFlow()
+    override val site: StateFlow<SiteConfig> = _site.asStateFlow()
 
     override fun start() {
         synchronized(lock) {
@@ -104,8 +112,6 @@ class MujocoRobotDataSource @Inject constructor(
         }
     }
 
-    // El servidor simula el mismo data center que el simulador local.
-    override suspend fun getSiteConfig(): SiteConfig = DataCenterSite.config
 
     override suspend fun send(command: Command): CommandOutcome {
         val ws = synchronized(lock) { socket.takeIf { isOpen } } ?: awaitCancellation()
@@ -139,6 +145,17 @@ class MujocoRobotDataSource @Inject constructor(
             is AlertsDto -> _alerts.value = message.alerts.mapNotNull { it.toDomain() }
             is EventDto -> message.toDomain()?.let { _events.emit(it) }
             is CommandResponseDto -> pending[message.commandId]?.complete(message.toOutcome())
+            is SiteMessageDto -> onSiteReceived(message)
+        }
+    }
+
+    /** El robot manda su mapa al conectarse. Se guarda para seguir mostrándolo si se corta el enlace. */
+    private fun onSiteReceived(message: SiteMessageDto) {
+        try {
+            _site.value = message.site.toDefinition().config
+            siteStore.saveReceivedSite(ROBOT_ID, message.site)
+        } catch (e: InvalidSiteException) {
+            Log.w(TAG, "El robot mandó un mapa inválido: ${e.message}")
         }
     }
 

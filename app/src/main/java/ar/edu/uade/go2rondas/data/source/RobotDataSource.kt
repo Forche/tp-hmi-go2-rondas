@@ -7,6 +7,7 @@ import ar.edu.uade.go2rondas.domain.model.RobotEvent
 import ar.edu.uade.go2rondas.domain.model.SiteConfig
 import ar.edu.uade.go2rondas.domain.model.Telemetry
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Una fuente por tipo de robot (simulador local, servidor MuJoCo). El repositorio elige cuál usar
@@ -19,7 +20,8 @@ interface RobotDataSource {
 
     fun start()
     fun stop()
-    suspend fun getSiteConfig(): SiteConfig
+    /** Mapa que tiene cargado el robot: la app lo recibe de él, no lo trae fijo. */
+    val site: StateFlow<SiteConfig>
 
     /** Suspende hasta que el robot responde. Si la orden se pierde, no vuelve nunca: el timeout lo pone el repositorio. */
     suspend fun send(command: Command): CommandOutcome

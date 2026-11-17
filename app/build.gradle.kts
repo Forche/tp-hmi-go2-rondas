@@ -42,6 +42,14 @@ android {
     }
 }
 
+// Los sitios de ejemplo (carpeta sitios/ del repositorio) van dentro del APK: son los mismos archivos que
+// carga el servidor MuJoCo. Otro sitio se le carga al robot simulado desde el modo demo, sin recompilar.
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addStaticSourceDirectory(rootProject.layout.projectDirectory.dir("sitios").asFile.path)
+    }
+}
+
 // Room escribe acá el esquema de cada versión de la base; se commitea para poder escribir migraciones.
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")

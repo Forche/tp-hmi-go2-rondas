@@ -1,15 +1,20 @@
 package ar.edu.uade.go2rondas.data.sim
 
 import ar.edu.uade.go2rondas.core.coroutines.ApplicationScope
+import ar.edu.uade.go2rondas.data.site.InvalidSiteException
+import ar.edu.uade.go2rondas.data.site.SiteDefinition
+import ar.edu.uade.go2rondas.data.site.SiteFileStore
 import ar.edu.uade.go2rondas.data.source.RobotDataSource
 import ar.edu.uade.go2rondas.domain.model.Alert
 import ar.edu.uade.go2rondas.domain.model.Command
 import ar.edu.uade.go2rondas.domain.model.CommandOutcome
 import ar.edu.uade.go2rondas.domain.model.Level
 import ar.edu.uade.go2rondas.domain.model.LinkQuality
+import ar.edu.uade.go2rondas.domain.model.OperationalState
 import ar.edu.uade.go2rondas.domain.model.RejectionReason
 import ar.edu.uade.go2rondas.domain.model.RobotEvent
 import ar.edu.uade.go2rondas.domain.model.SimulationScenario
+import ar.edu.uade.go2rondas.domain.model.SiteLoadResult
 import ar.edu.uade.go2rondas.domain.model.SiteConfig
 import ar.edu.uade.go2rondas.domain.model.Telemetry
 import kotlinx.coroutines.CoroutineScope
@@ -20,9 +25,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -38,12 +46,13 @@ import kotlin.random.Random
  */
 @Singleton
 class SimulatedRobotDataSource @Inject constructor(
-    @param:ApplicationScope private val scope: CoroutineScope
+    @param:ApplicationScope private val scope: CoroutineScope,
+    private val siteStore: SiteFileStore
 ) : RobotDataSource {
 
-    private val site = DataCenterSite.config
-    private val engine = RobotSimulator(site, ROBOT_ID)
     private val mutex = Mutex()
+    private val _site = MutableStateFlow(siteStore.loadSimulatorSite(ROBOT_ID))
+    private var engine = newEngine(_site.value)
 
     private val _telemetry = MutableSharedFlow<Telemetry>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private val _alerts = MutableStateFlow<List<Alert>>(emptyList())
@@ -60,6 +69,8 @@ class SimulatedRobotDataSource @Inject constructor(
     override val alerts: Flow<List<Alert>> = _alerts.asStateFlow()
     override val events: Flow<RobotEvent> = _events.asSharedFlow()
     val timeScale: StateFlow<Int> = _timeScale.asStateFlow()
+    override val site: StateFlow<SiteConfig> = _site.map { it.config }
+        .stateIn(scope, SharingStarted.Eagerly, _site.value.config)
 
     override fun start() {
         if (loop?.isActive == true) return
@@ -80,8 +91,6 @@ class SimulatedRobotDataSource @Inject constructor(
         loop?.cancel()
         loop = null
     }
-
-    override suspend fun getSiteConfig(): SiteConfig = site
 
     override suspend fun send(command: Command): CommandOutcome {
         if (!isLinkUp()) awaitCancellation()
@@ -108,6 +117,27 @@ class SimulatedRobotDataSource @Inject constructor(
             else -> engine.trigger(scenario)
         }
     }
+
+    /**
+     * Carga otro sitio en el robot simulado, como se haría en la puesta en marcha de un robot real.
+     * Sólo con el robot en la base; el robot arranca de cero sobre el nuevo mapa.
+     * [load] lee y valida el archivo; si falla, el robot sigue con el sitio que tenía.
+     */
+    suspend fun loadSite(load: () -> SiteDefinition): SiteLoadResult = mutex.withLock {
+        if (engine.state != OperationalState.AT_BASE) return SiteLoadResult.RobotBusy
+        val definition = try {
+            load()
+        } catch (e: InvalidSiteException) {
+            return SiteLoadResult.Invalid(e.message.orEmpty())
+        }
+        engine = newEngine(definition)
+        queuedEvents.clear()
+        _site.value = definition
+        SiteLoadResult.Loaded(definition.config.name)
+    }.also { publish() }
+
+    private fun newEngine(definition: SiteDefinition) =
+        RobotSimulator(definition.config, checkNotNull(definition.simulation), ROBOT_ID)
 
     fun setTimeScale(scale: Int) {
         _timeScale.value = scale.coerceIn(1, MAX_TIME_SCALE)

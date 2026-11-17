@@ -7,7 +7,6 @@ Las alertas y los eventos usan directamente el formato del contrato JSON.
 import random
 import time
 
-from . import site
 
 SPEED_MPS = 0.5
 INSPECTION_SECONDS = 4.0
@@ -50,10 +49,11 @@ class Mission:
 
 
 class Robot:
-    def __init__(self, robot_id, rng=None):
+    def __init__(self, robot_id, site, rng=None):
         self.robot_id = robot_id
+        self.site = site
         self.rng = rng or random.Random()
-        self.route = site.RoutePath(site.ROUTE)
+        self.route = site.path
         self.state = "AT_BASE"
         self.battery = 92.0
         self.distance = 0.0
@@ -116,9 +116,9 @@ class Robot:
         self.speed = 0.0
         self.drain_multiplier = 1.0
         self.battery = min(100.0, self.battery + CHARGE_RATE * dt)
-        if self.battery > site.BATTERY_WARNING + 5:
+        if self.battery > self.site.battery_warning + 5:
             self.low_battery_alerted = False
-        if self.battery > site.BATTERY_CRITICAL + 5:
+        if self.battery > self.site.battery_critical + 5:
             self.critical_battery_alerted = False
 
     def _advance_mission(self, dt):
@@ -216,24 +216,24 @@ class Robot:
             self.state = "ON_MISSION"
 
     def _measure(self, checkpoint_id):
-        zone = site.CHECKPOINTS[checkpoint_id][1]
-        temperature, noise_baseline = site.TYPICAL_READINGS[zone]
+        zone = self.site.checkpoints[checkpoint_id][1]
+        temperature, noise_baseline = self.site.typical_readings[zone]
         if self.high_temperature_armed:
             self.high_temperature_armed = False
-            temperature = site.TEMPERATURE_LIMITS[zone][1] + 1.1
+            temperature = self.site.temperature_limits[zone][1] + 1.1
         else:
             temperature += self.rng.uniform(-0.6, 0.6)
         return {
             "checkpoint_id": checkpoint_id,
             "temperature_c": round(temperature, 1),
-            "humidity_pct": round(45 + self.rng.uniform(-4, 4), 1),
+            "humidity_pct": round(self.site.humidity_pct + self.rng.uniform(-4, 4), 1),
             "noise_dba": round(noise_baseline + self.rng.uniform(-1.5, 1.5), 1),
             "noise_baseline_dba": noise_baseline,
         }
 
     def _evaluate(self, checkpoint_id, reading):
-        zone = site.CHECKPOINTS[checkpoint_id][1]
-        warning, critical = site.TEMPERATURE_LIMITS[zone]
+        zone = self.site.checkpoints[checkpoint_id][1]
+        warning, critical = self.site.temperature_limits[zone]
         t = reading["temperature_c"]
         if t >= critical:
             return [("TEMPERATURE_HIGH", "CRITICAL", t, critical)]
@@ -264,16 +264,16 @@ class Robot:
     def _check_battery(self):
         if self.state == "AT_BASE":
             return
-        if self.battery < site.BATTERY_WARNING and not self.low_battery_alerted:
+        if self.battery < self.site.battery_warning and not self.low_battery_alerted:
             self.low_battery_alerted = True
             if self.mission:
                 self.mission.low_battery = True
-            self._raise_alert("WARNING", "BATTERY_LOW", None, self.battery, float(site.BATTERY_WARNING))
-        if self.battery < site.BATTERY_CRITICAL and not self.critical_battery_alerted:
+            self._raise_alert("WARNING", "BATTERY_LOW", None, self.battery, float(self.site.battery_warning))
+        if self.battery < self.site.battery_critical and not self.critical_battery_alerted:
             self.critical_battery_alerted = True
             if self.mission:
                 self.mission.low_battery = True
-            self._raise_alert("CRITICAL", "BATTERY_CRITICAL", None, self.battery, float(site.BATTERY_CRITICAL))
+            self._raise_alert("CRITICAL", "BATTERY_CRITICAL", None, self.battery, float(self.site.battery_critical))
             if self.state != "RETURNING":
                 self._resolve_decisions()
                 self.inspection_left = 0.0
@@ -330,11 +330,11 @@ class Robot:
     def _start(self, mission_type, checkpoint_id):
         if self.state != "AT_BASE":
             return False, "NOT_AT_BASE"
-        if self.battery < site.BATTERY_MIN_TO_START:
+        if self.battery < self.site.battery_min_to_start:
             return False, "LOW_BATTERY"
-        ids = [checkpoint_id] if mission_type == "SPOT_CHECK" and checkpoint_id else site.MISSIONS.get(mission_type, [])
+        ids = [checkpoint_id] if mission_type == "SPOT_CHECK" and checkpoint_id else self.site.missions.get(mission_type, [])
         targets = sorted(
-            ((cp, self.route.distance_of(site.CHECKPOINTS[cp][0])) for cp in ids if cp in site.CHECKPOINTS),
+            ((cp, self.route.distance_of(self.site.checkpoints[cp][0])) for cp in ids if cp in self.site.checkpoints),
             key=lambda t: t[1],
         )
         if not targets:
@@ -403,17 +403,13 @@ class Robot:
         return state
 
     def _on_stairs(self):
-        segment = self.route.segment_index_at(self.distance)
-        _, y = self.route.point_at(self.distance)
-        top = site.ROUTE[segment][1]
-        bottom = site.ROUTE[segment + 1][1]
-        return segment == site.STAIRS_SEGMENT_INDEX and top + 0.5 < y < bottom - 0.5
+        return self.site.on_stairs(*self.route.point_at(self.distance))
 
     # ------------------------------------------------------------ escenarios (consola del servidor)
 
     def trigger(self, scenario):
         if scenario == "LOW_BATTERY":
-            self.battery = min(self.battery, site.BATTERY_WARNING + 1.0)
+            self.battery = min(self.battery, self.site.battery_warning + 1.0)
             self.drain_multiplier = LOW_BATTERY_DRAIN_MULTIPLIER
         elif scenario == "OBSTACLE":
             self.obstacle_armed = True
@@ -423,7 +419,7 @@ class Robot:
     # ------------------------------------------------------------ salida
 
     def plan_position(self):
-        return site.BASE if self.state == "AT_BASE" else self.route.point_at(self.distance)
+        return self.site.base if self.state == "AT_BASE" else self.route.point_at(self.distance)
 
     def heading(self):
         return self.route.heading_at(self.distance, self.forward)
@@ -458,7 +454,7 @@ class Robot:
             "state": self.state,
             "mission": mission,
             "location": {
-                "level": site.level_at(y),
+                "level": self.site.level_at(y),
                 "from_cp": m.last_checkpoint if m else None,
                 "to_cp": None if self.state == "RETURNING" or m is None or m.current is None else m.current[0],
                 "x": round(x, 2), "y": round(y, 2), "heading_deg": self.heading(),

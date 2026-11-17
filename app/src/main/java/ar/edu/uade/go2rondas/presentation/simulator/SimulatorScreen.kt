@@ -1,5 +1,7 @@
 package ar.edu.uade.go2rondas.presentation.simulator
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,6 +18,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.uade.go2rondas.R
 import ar.edu.uade.go2rondas.core.model.UiState
 import ar.edu.uade.go2rondas.domain.model.SimulationScenario
+import ar.edu.uade.go2rondas.domain.model.SiteLoadResult
 import ar.edu.uade.go2rondas.presentation.common.LocalSnackbarHostState
 import ar.edu.uade.go2rondas.presentation.common.components.ErrorView
 import ar.edu.uade.go2rondas.presentation.common.components.LoadingView
@@ -58,6 +62,9 @@ private fun SimulationScenario.detailRes(): Int = when (this) {
 
 private val TimeScales = listOf(1, 4, 10)
 
+/** Tipos que ofrece el selector de documentos: según de dónde venga, un .json puede llegar con cualquiera. */
+private val SITE_FILE_TYPES = arrayOf("application/json", "application/octet-stream", "text/plain")
+
 @Composable
 fun SimulatorScreen(onBack: () -> Unit, viewModel: SimulatorViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -69,8 +76,19 @@ fun SimulatorScreen(onBack: () -> Unit, viewModel: SimulatorViewModel = hiltView
                 is SimulatorUiEffect.Triggered -> snackbar.showSnackbar(
                     context.getString(R.string.simulator_triggered, context.getString(effect.scenario.titleRes()))
                 )
+                is SimulatorUiEffect.SiteLoaded -> snackbar.showSnackbar(
+                    when (val result = effect.result) {
+                        is SiteLoadResult.Loaded -> context.getString(R.string.site_loaded, result.siteName)
+                        is SiteLoadResult.Invalid -> context.getString(R.string.site_invalid, result.reason)
+                        SiteLoadResult.RobotBusy -> context.getString(R.string.site_robot_busy)
+                    }
+                )
             }
         }
+    }
+    // El archivo se lee y se copia al elegirlo: no hace falta conservar el permiso sobre el documento.
+    val pickSiteFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { viewModel.onSiteFileChosen(it.toString()) }
     }
     val now = rememberNow()
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -83,7 +101,13 @@ fun SimulatorScreen(onBack: () -> Unit, viewModel: SimulatorViewModel = hiltView
         when (val current = state) {
             UiState.Idle, UiState.Loading -> LoadingView()
             is UiState.Error -> ErrorView(current.message)
-            is UiState.Success -> SimulatorBody(current.data, viewModel::onTimeScaleSelected, viewModel::onTrigger)
+            is UiState.Success -> SimulatorBody(
+                data = current.data,
+                onTimeScaleSelected = viewModel::onTimeScaleSelected,
+                onTrigger = viewModel::onTrigger,
+                onLoadSite = { pickSiteFile.launch(SITE_FILE_TYPES) },
+                onResetSite = viewModel::onResetSite
+            )
         }
     }
 }
@@ -92,7 +116,9 @@ fun SimulatorScreen(onBack: () -> Unit, viewModel: SimulatorViewModel = hiltView
 private fun SimulatorBody(
     data: SimulatorData,
     onTimeScaleSelected: (Int) -> Unit,
-    onTrigger: (SimulationScenario) -> Unit
+    onTrigger: (SimulationScenario) -> Unit,
+    onLoadSite: () -> Unit,
+    onResetSite: () -> Unit
 ) {
     Column(
         Modifier
@@ -116,9 +142,41 @@ private fun SimulatorBody(
                 )
             }
         }
+        SiteCard(data.siteName, onLoadSite, onResetSite)
         Label(stringResource(R.string.simulator_scenarios))
         SimulationScenario.entries.forEach { scenario ->
             ScenarioCard(scenario, onTrigger = { onTrigger(scenario) })
+        }
+    }
+}
+
+/** Sitio cargado en el robot simulado: se cambia cargándole otro archivo, sin recompilar la app. */
+@Composable
+private fun SiteCard(siteName: String, onLoadSite: () -> Unit, onResetSite: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            stringResource(R.string.site_current),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(siteName, style = MaterialTheme.typography.titleSmall)
+        Text(
+            stringResource(R.string.site_load_detail),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onLoadSite) { Text(stringResource(R.string.site_load)) }
+            TextButton(onClick = onResetSite) { Text(stringResource(R.string.site_reset)) }
         }
     }
 }

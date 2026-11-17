@@ -9,7 +9,7 @@ import ar.edu.uade.go2rondas.domain.model.CommandType
 import ar.edu.uade.go2rondas.domain.model.MissionRecord
 import ar.edu.uade.go2rondas.domain.model.RobotSnapshot
 import ar.edu.uade.go2rondas.domain.model.SiteConfig
-import ar.edu.uade.go2rondas.domain.usecase.GetSiteConfigUseCase
+import ar.edu.uade.go2rondas.domain.usecase.ObserveSiteConfigUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveMissionDetailUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveMissionHistoryUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveRobotSnapshotUseCase
@@ -29,7 +29,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -57,7 +56,7 @@ data class PanelData(
 @HiltViewModel
 class PanelViewModel @Inject constructor(
     observeRobotSnapshot: ObserveRobotSnapshotUseCase,
-    getSiteConfig: GetSiteConfigUseCase,
+    observeSiteConfig: ObserveSiteConfigUseCase,
     observeMissionDetail: ObserveMissionDetailUseCase,
     observeMissionHistory: ObserveMissionHistoryUseCase,
     private val sendCommand: SendCommandUseCase
@@ -79,7 +78,7 @@ class PanelViewModel @Inject constructor(
     val uiState: StateFlow<UiState<PanelData>> =
         combine(
             snapshots,
-            flow { emit(getSiteConfig()) },
+            observeSiteConfig(),
             missionResults,
             dialogs,
             observeMissionHistory().map { it.firstOrNull() }

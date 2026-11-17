@@ -30,6 +30,7 @@ import ar.edu.uade.go2rondas.domain.model.RobotEvent
 import ar.edu.uade.go2rondas.domain.model.RobotLocation
 import ar.edu.uade.go2rondas.domain.model.SimulationScenario
 import ar.edu.uade.go2rondas.domain.model.SiteConfig
+import ar.edu.uade.go2rondas.data.site.SimulationProfile
 import ar.edu.uade.go2rondas.domain.model.Telemetry
 import kotlin.math.abs
 import kotlin.math.max
@@ -44,6 +45,7 @@ import kotlin.random.Random
  */
 class RobotSimulator(
     private val site: SiteConfig,
+    private val simulation: SimulationProfile,
     private val robotId: String,
     private val random: Random = Random.Default,
     private val clock: () -> Long = System::currentTimeMillis
@@ -268,13 +270,10 @@ class RobotSimulator(
     }
 
     private fun measure(checkpoint: Checkpoint): EnvironmentReading {
-        val (temperature, noiseBaseline) = when (checkpoint.zone) {
-            CheckpointZone.COLD_AISLE -> 23.5 to 62.0
-            CheckpointZone.HOT_AISLE -> 31.5 to 66.0
-            CheckpointZone.COOLING -> 19.5 to 70.0
-            CheckpointZone.NETWORK -> 24.5 to 64.0
-            CheckpointZone.ELECTRICAL -> 25.5 to 52.0
-        }
+        // El archivo de sitio ya garantiza que hay lecturas típicas para cada zona con checkpoints.
+        val typical = simulation.typicalReadings.getValue(checkpoint.zone)
+        val temperature = typical.temperatureC
+        val noiseBaseline = typical.noiseBaselineDba
         val forcedTemperature = if (highTemperatureArmed) {
             highTemperatureArmed = false
             (thresholds.temperature[checkpoint.zone]?.critical ?: 35.0) + 1.1
@@ -282,7 +281,7 @@ class RobotSimulator(
         return EnvironmentReading(
             checkpointId = checkpoint.id,
             temperatureC = round1(forcedTemperature ?: (temperature + random.nextDouble(-0.6, 0.6))),
-            humidityPct = round1(45 + random.nextDouble(-4.0, 4.0)),
+            humidityPct = round1(simulation.humidityPct + random.nextDouble(-4.0, 4.0)),
             noiseDba = round1(noiseBaseline + random.nextDouble(-1.5, 1.5)),
             noiseBaselineDba = noiseBaseline
         )
@@ -456,12 +455,7 @@ class RobotSimulator(
         }.also { stoppedWhileReturning = false }
     }
 
-    private fun isOnStairs(): Boolean {
-        val segment = route.segmentIndexAt(distance)
-        val point = route.pointAt(distance)
-        return segment == DataCenterSite.STAIRS_SEGMENT_INDEX && point.y > site.route[segment].y + 0.5f &&
-            point.y < site.route[segment + 1].y - 0.5f
-    }
+    private fun isOnStairs(): Boolean = site.isOnStairs(route.pointAt(distance))
 
     // ---------------------------------------------------------------- escenarios
 
@@ -486,7 +480,7 @@ class RobotSimulator(
 
     fun alerts(): List<Alert> = alerts.toList()
 
-    fun currentLevel(): Level = DataCenterSite.levelAt(if (state == AT_BASE) site.base else route.pointAt(distance))
+    fun currentLevel(): Level = site.levelAt(if (state == AT_BASE) site.base else route.pointAt(distance))
 
     fun telemetry(link: LinkQuality): Telemetry {
         sequence++
@@ -518,7 +512,7 @@ class RobotSimulator(
                 )
             },
             location = RobotLocation(
-                level = DataCenterSite.levelAt(point),
+                level = site.levelAt(point),
                 fromCheckpointId = m?.lastCheckpointId,
                 toCheckpointId = if (state == RETURNING) null else m?.current?.checkpoint?.id,
                 position = point,
