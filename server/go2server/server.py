@@ -38,6 +38,7 @@ class Go2Server:
         self.handled_commands = set()
         self.link_down_until = 0.0
         self.last_alerts = None
+        self.marks = {}
 
     def link_up(self):
         return time.time() >= self.link_down_until
@@ -92,9 +93,11 @@ class Go2Server:
             self.publish()
 
     def publish(self):
+        new_events = self.robot.drain_events()
+        self.track_checkpoints(new_events)
         x, y = self.robot.plan_position()
         self.world.place(x, y, self.robot.heading())
-        self.queued_events = (self.queued_events + self.robot.drain_events())[-MAX_QUEUED_EVENTS:]
+        self.queued_events = (self.queued_events + new_events)[-MAX_QUEUED_EVENTS:]
         if not self.clients or not self.link_up():
             return
         messages = [json.dumps(event) for event in self.queued_events]
@@ -109,6 +112,19 @@ class Go2Server:
         messages.append(json.dumps(self.robot.telemetry(self.world.plan_position(), link)))
         for message in messages:
             websockets.broadcast(self.clients, message)
+
+    def track_checkpoints(self, events):
+        """Lleva el resultado de cada checkpoint de la ronda actual para mostrarlo en la escena 3D."""
+        for event in events:
+            if event.get("kind") == "MISSION_STARTED":
+                self.marks = {}
+            elif event.get("kind") == "CHECKPOINT_RESULT":
+                self.marks[event["checkpoint_id"]] = (event["status"], event.get("reading"))
+        marks = dict(self.marks)
+        m = self.robot.mission
+        if self.robot.state == "ON_MISSION" and m is not None and m.current and self.robot.speed == 0:
+            marks.setdefault(m.current[0], ("INSPECTING", None))
+        self.world.show_checkpoints(marks)
 
     # ------------------------------------------------------------ consola
 
