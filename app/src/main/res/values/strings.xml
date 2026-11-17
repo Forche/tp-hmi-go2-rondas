@@ -141,6 +141,13 @@
     <string name="panel_no_mission">Sin ronda activa</string>
     <string name="panel_see_telemetry">Ver toda la telemetría</string>
     <string name="panel_choose_mission">Elegir misión</string>
+    <string name="panel_controls">Controles</string>
+    <string name="controls_title">Control de la ronda</string>
+    <string name="controls_last_command">Última orden:</string>
+    <string name="controls_stop_disclaimer">La detención es un comando de software: no reemplaza la parada de emergencia física del robot.</string>
+    <string name="cancel_dialog_title">¿Cancelar la misión?</string>
+    <string name="cancel_dialog_text">El robot vuelve a la base y la ronda queda como cancelada en el historial.</string>
+    <string name="cancel_dialog_dismiss">Seguir con la ronda</string>
 
     <!-- Telemetría -->
     <string name="telemetry_title">Telemetría</string>
