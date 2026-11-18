@@ -35,7 +35,7 @@ class RobotTest(unittest.TestCase):
         self.assertEqual([f"CP{i}" for i in range(1, 9)], [r["checkpoint_id"] for r in self.results()])
         self.assertEqual("COMPLETED", self.finished()["result"])
 
-    def test_obstacle_can_be_skipped_but_not_retried(self):
+    def test_obstacle_can_be_skipped_but_not_retried_while_it_is_there(self):
         self.start_full_round()
         self.robot.trigger("OBSTACLE")
         self.run_until(lambda: self.robot.state == "AWAITING_DECISION")
@@ -49,6 +49,18 @@ class RobotTest(unittest.TestCase):
         self.run_until(lambda: self.robot.state == "AT_BASE")
         skipped = [r for r in self.results() if r["status"] == "SKIPPED"]
         self.assertEqual([alert["checkpoint_id"]], [r["checkpoint_id"] for r in skipped])
+
+    def test_once_the_obstacle_is_cleared_retry_goes_on_to_the_checkpoint(self):
+        self.start_full_round()
+        self.robot.trigger("OBSTACLE")
+        self.run_until(lambda: self.robot.state == "AWAITING_DECISION")
+        alert = self.robot.alerts[0]
+        self.robot.trigger("CLEAR_OBSTACLE")
+        self.assertEqual((True, None),
+                         self.robot.handle("INCIDENT_DECISION", {"alert_id": alert["id"], "decision": "RETRY"}))
+        self.run_until(lambda: any(r["checkpoint_id"] == alert["checkpoint_id"] for r in self.results()))
+        result = next(r for r in self.results() if r["checkpoint_id"] == alert["checkpoint_id"])
+        self.assertNotEqual("SKIPPED", result["status"])
 
     def test_low_battery_interrupts_the_round(self):
         self.start_full_round()
