@@ -19,6 +19,7 @@ import ar.edu.uade.go2rondas.domain.model.HistoryEvent
 import ar.edu.uade.go2rondas.domain.model.HmiTimings
 import ar.edu.uade.go2rondas.domain.model.LinkState
 import ar.edu.uade.go2rondas.domain.model.MissionResult
+import ar.edu.uade.go2rondas.domain.model.OperationalState
 import ar.edu.uade.go2rondas.domain.model.Robot
 import ar.edu.uade.go2rondas.domain.model.RobotEvent
 import ar.edu.uade.go2rondas.domain.model.RobotSource
@@ -108,9 +109,17 @@ class RobotRepositoryImpl @Inject constructor(
         source.start()
         collectJob = scope.launch {
             launch {
+                var idleAtBase = false
                 source.telemetry.collect {
                     telemetry.value = it
                     lastReceivedAt.value = System.currentTimeMillis()
+                    // El robot está en la base sin ronda: si acá quedó una abierta (se reinició el servidor en
+                    // medio de la ronda), ya no va a terminar. Si después llega su fin, el resultado se corrige.
+                    val idle = it.state == OperationalState.AT_BASE && it.mission == null
+                    if (idle && !idleAtBase) {
+                        safely { history.closeOpenMissions(robot.id, System.currentTimeMillis(), MissionResult.ABORTED.name) }
+                    }
+                    idleAtBase = idle
                 }
             }
             launch { source.alerts.collect { alerts.value = it } }
