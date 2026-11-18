@@ -4,7 +4,7 @@ App Android para operar y supervisar un robot **Unitree Go2 EDU** que hace ronda
 Trabajo práctico grupal de Desarrollo de Aplicaciones I (UADE): interfaz HMI/HRI con telemetría simulada.
 
 El robot se simula **dentro del APK**: la app funciona sin robot, sin servidor y sin internet.
-Opcionalmente, un segundo robot (Go2-02) se conecta por WebSocket a un servidor con **MuJoCo**: el Go2 camina con física, detecta obstáculos con un LiDAR simulado y saca fotos con su cámara frontal ([`server/`](server/README.md)).
+Opcionalmente, un segundo robot (Go2-02) se conecta por WebSocket a un servidor con **MuJoCo**: el Go2 camina con física, detecta obstáculos con un LiDAR simulado y saca fotos con su cámara frontal ([`server/`](server/README.md)). En el servidor, la lógica de la ronda está separada del robot simulado por un contrato: para usar un Go2 real se reemplaza sólo la parte simulada.
 
 - Prototipo en Figma: <https://www.figma.com/design/KC4Az4VPV1sjr4UUVoTD7K>
 

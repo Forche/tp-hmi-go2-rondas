@@ -1,9 +1,9 @@
 """Cuerpo del robot: dónde está, cómo se mueve y qué tiene adelante.
 
-El motor de la ronda (robot.py) decide a qué distancia del recorrido tiene que ir; el cuerpo lo lleva
-hasta ahí y le informa la distancia en la que realmente está.
+Es parte del robot simulado (sim_robot.py). La lógica de la ronda decide a qué distancia del
+recorrido ir; el cuerpo lo lleva hasta ahí y le informa la distancia en la que realmente está.
 
-- KinematicBody: sin MuJoCo. Avanza a velocidad constante; lo usan los tests del motor de la ronda.
+- KinematicBody: sin MuJoCo. Avanza a velocidad constante; lo usan los tests de la lógica de la ronda.
 - PhysicsBody: el Go2 en MuJoCo con la física corriendo (mj_step). El robot se apoya con contactos y
   gravedad y las patas trotan con un control PD de cada articulación. No hay una política de locomoción
   entrenada: una fuerza horizontal sobre el tronco lo guía por el recorrido. En la escalera el tronco
@@ -42,7 +42,6 @@ def _bypass(distance, obstacle_at):
 class KinematicBody:
     """Cuerpo sin física para los tests: avanza a velocidad constante y "ve" el obstáculo por cálculo."""
 
-    has_camera = False
 
     def __init__(self, site):
         self.site = site
@@ -104,7 +103,6 @@ class KinematicBody:
 class PhysicsBody(KinematicBody):
     """El Go2 de MuJoCo con la física corriendo. Ver la explicación al principio del archivo."""
 
-    has_camera = True
 
     # Control PD de las patas (los actuadores del modelo son de torque).
     KP, KD = 45.0, 1.6
@@ -119,10 +117,10 @@ class PhysicsBody(KinematicBody):
     MAX_TORQUE = 15.0
     LOOKAHEAD = 0.35
 
-    def __init__(self, world):
-        super().__init__(world.site)
-        self.world = world
-        self.model, self.data = world.model, world.data
+    def __init__(self, scene):
+        super().__init__(scene.site)
+        self.scene = scene
+        self.model, self.data = scene.model, scene.data
         self.base_id = self.model.body("base").id
         self.obstacle_body = self.model.body("obstaculo").id
         self.obstacle_mocap = self.model.body_mocapid[self.obstacle_body]
