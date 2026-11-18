@@ -6,7 +6,7 @@ escena. Los bloques, los equipos y los escalones tienen colisión: el robot cami
 LiDAR los ve. Hay además una caja (el obstáculo del escenario E4) escondida hasta que se usa.
 Sobre cada checkpoint hay un cartel con el resultado de la ronda actual.
 
-Cómo se mueve el robot está en body.py. Acá también se sacan las fotos de la cámara frontal.
+Cómo se mueve el robot está en sim_body.py. Acá también se sacan las fotos de la cámara frontal.
 """
 
 import contextlib
@@ -170,7 +170,7 @@ def checkpoint_label(cp, mark):
             f"{reading['noise_dba']:.0f} dB")
 
 
-class World:
+class Scene:
     def __init__(self, model_dir, site, with_viewer=False):
         self.site = site
         # El include de go2.xml se resuelve relativo al archivo de escena: va en la carpeta del modelo.

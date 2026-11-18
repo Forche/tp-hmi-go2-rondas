@@ -5,7 +5,9 @@ import random
 import unittest
 
 from go2server import site
-from go2server.robot import Robot
+from go2server.sim_body import KinematicBody
+from go2server.mission_control import MissionControl
+from go2server.sim_robot import SimulatedRobot
 
 SITES_DIR = os.path.dirname(site.DEFAULT_SITE)
 
@@ -50,14 +52,15 @@ class SiteTest(unittest.TestCase):
         self.assertFalse(building_b.on_stairs(21.6, 11.2))
 
     def test_the_robot_runs_the_round_of_another_site(self):
-        robot = Robot("go2-02", site.Site(raw_site("datacenter-edificio-b.json")), random.Random(1))
-        self.assertEqual((True, None), robot.handle("START_MISSION", {"mission": "FULL_ROUND"}))
+        site_b = site.Site(raw_site("datacenter-edificio-b.json"))
+        control = MissionControl("go2-02", site_b, SimulatedRobot(site_b, KinematicBody(site_b), rng=random.Random(1)))
+        self.assertEqual((True, None), control.handle("START_MISSION", {"mission": "FULL_ROUND"}))
         events = []
         for _ in range(3000):
-            if robot.state == "AT_BASE" and events:
+            if control.state == "AT_BASE" and events:
                 break
-            robot.tick(1.0)
-            events += robot.drain_events()
+            control.tick(1.0)
+            events += control.drain_events()
         results = [e["checkpoint_id"] for e in events if e["kind"] == "CHECKPOINT_RESULT"]
         self.assertEqual(["CP1", "CP2", "CP3", "CP4", "CP5"], results)
 

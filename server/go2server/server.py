@@ -1,6 +1,8 @@
-"""Servidor WebSocket: corre la ronda sobre la física de MuJoCo y habla con la app.
+"""Servidor WebSocket: corre la ronda y habla con la app.
 
-La física avanza 50 veces por segundo (body.py); el motor de la ronda (robot.py), una vez por segundo.
+Arma las dos partes: la lógica de la ronda (mission_control.py) y el robot, que hoy es SimulatedRobot sobre
+MuJoCo (sim_robot.py, sim_body.py, sim_scene.py). La física avanza 50 veces por segundo; la lógica de la
+ronda, una vez por segundo. El corte de enlace (`corte`) simula la red, no el robot: vive acá.
 
 Mensajes (contrato del TP, no el protocolo oficial de Unitree):
   app -> servidor: command
@@ -17,9 +19,10 @@ import time
 
 import websockets
 
-from .body import PhysicsBody
-from .robot import Robot
-from .world import World
+from .sim_body import PhysicsBody
+from .mission_control import MissionControl
+from .sim_robot import SimulatedRobot
+from .sim_scene import Scene
 
 ROBOT_ID = "go2-02"
 MAX_QUEUED_EVENTS = 500
@@ -37,11 +40,13 @@ HELP = """Comandos de consola:
 
 
 class Go2Server:
-    def __init__(self, world: World, site, speed: int):
+    def __init__(self, scene: Scene, site, speed: int):
         self.site = site
-        self.world = world
-        self.body = PhysicsBody(world)
-        self.robot = Robot(ROBOT_ID, site, body=self.body)
+        self.scene = scene
+        self.body = PhysicsBody(scene)
+        # El robot simulado. Con un Go2 real, acá iría UnitreeRobot (unitree_robot.py).
+        self.robot = SimulatedRobot(site, self.body, scene=scene)
+        self.mission_control = MissionControl(ROBOT_ID, site, self.robot)
         self.speed = speed
         self.clients = set()
         self.queued_events = []
@@ -49,7 +54,6 @@ class Go2Server:
         self.link_down_until = 0.0
         self.last_alerts = None
         self.marks = {}
-        self.photos_taken = set()
 
     def link_up(self):
         return time.time() >= self.link_down_until
@@ -85,7 +89,7 @@ class Go2Server:
             accepted, reason = True, None  # orden repetida: se confirma sin ejecutarla otra vez
         else:
             self.handled_commands.add(command_id)
-            accepted, reason = self.robot.handle(message.get("name"), message.get("params"))
+            accepted, reason = self.mission_control.handle(message.get("name"), message.get("params"))
         print(f"Orden {message.get('name')}: {'aceptada' if accepted else 'rechazada (' + str(reason) + ')'}")
         await websocket.send(json.dumps({
             "type": "command_response",
@@ -102,33 +106,33 @@ class Go2Server:
         next_tick = time.monotonic() + 1.0
         while True:
             await asyncio.sleep(FRAME_SECONDS)
-            with self.world.lock():
+            with self.scene.lock():
                 self.body.frame(FRAME_SECONDS * self.speed)
-            self.world.sync()
+            self.scene.sync()
             if time.monotonic() >= next_tick:
                 next_tick += 1.0
-                self.robot.set_link_available(self.link_up())
-                self.robot.tick(float(self.speed))
+                self.mission_control.set_link_available(self.link_up())
+                self.mission_control.tick(float(self.speed))
                 self.publish()
 
     def publish(self):
-        new_events = self.robot.drain_events()
+        new_events = self.mission_control.drain_events()
         self.track_checkpoints(new_events)
-        new_events += self.take_photos(new_events)
-        x, y = self.robot.plan_position()
+        new_events += self.photo_messages()
+        x, y = self.mission_control.plan_position()
         self.queued_events = (self.queued_events + new_events)[-MAX_QUEUED_EVENTS:]
         if not self.clients or not self.link_up():
             return
         messages = [json.dumps(event) for event in self.queued_events]
         self.queued_events = []
-        alerts = json.dumps({"type": "alerts", "alerts": self.robot.alerts})
+        alerts = json.dumps({"type": "alerts", "alerts": self.mission_control.alerts})
         if alerts != self.last_alerts:
             messages.append(alerts)
             self.last_alerts = alerts
         level_basement = self.site.level_at(y) == "BASEMENT"
         link = {"latency_ms": random.randint(180, 260) if level_basement else random.randint(70, 110),
                 "rssi_dbm": -74 if level_basement else -61}
-        messages.append(json.dumps(self.robot.telemetry((x, y), link)))
+        messages.append(json.dumps(self.mission_control.telemetry(link)))
         for message in messages:
             websockets.broadcast(self.clients, message)
 
@@ -140,24 +144,16 @@ class Go2Server:
             elif event.get("kind") == "CHECKPOINT_RESULT":
                 self.marks[event["checkpoint_id"]] = (event["status"], event.get("reading"))
         marks = dict(self.marks)
-        m = self.robot.mission
-        if self.robot.state == "ON_MISSION" and m is not None and m.current and self.robot.inspection_left > 0:
+        m = self.mission_control.mission
+        if self.mission_control.state == "ON_MISSION" and m is not None and m.current and self.mission_control.inspection_left > 0:
             marks.setdefault(m.current[0], ("INSPECTING", None))
-        self.world.show_checkpoints(marks)
+        self.scene.show_checkpoints(marks)
 
-    def take_photos(self, events):
-        """Saca con la cámara frontal las fotos que nombran los eventos nuevos (una vez cada una).
-        El robot está quieto: en el checkpoint, o frenado frente al obstáculo."""
-        photos = []
-        for event in events:
-            photo_id = event.get("photo_id") or (event.get("alert") or {}).get("photo_id")
-            if not photo_id or photo_id in self.photos_taken:
-                continue
-            self.photos_taken.add(photo_id)
-            jpeg = self.world.photo(*self.body.pose())
-            photos.append({"type": "photo", "photo_id": photo_id, "timestamp": int(time.time() * 1000),
-                           "jpeg_base64": base64.b64encode(jpeg).decode("ascii")})
-        return photos
+    def photo_messages(self):
+        """Las fotos que sacó el robot desde el último envío, como mensajes `photo` del contrato."""
+        return [{"type": "photo", "photo_id": photo_id, "timestamp": int(time.time() * 1000),
+                 "jpeg_base64": base64.b64encode(jpeg).decode("ascii")}
+                for photo_id, jpeg in self.robot.drain_photos()]
 
     # ------------------------------------------------------------ consola
 
@@ -188,8 +184,8 @@ class Go2Server:
             elif command == "velocidad" and args:
                 self.speed = max(1, min(10, int(args[0])))
             elif command == "estado":
-                print(f"{self.robot.state} · batería {self.robot.battery:.0f} % · "
-                      f"posición {self.robot.plan_position()} · enlace {'arriba' if self.link_up() else 'cortado'}")
+                print(f"{self.mission_control.state} · batería {self.mission_control.battery:.0f} % · "
+                      f"posición {self.mission_control.plan_position()} · enlace {'arriba' if self.link_up() else 'cortado'}")
                 continue
             else:
                 print(HELP)
@@ -198,8 +194,8 @@ class Go2Server:
 
 
 async def serve(host, port, model_dir, site, speed, with_viewer, interactive):
-    world = World(model_dir, site, with_viewer)
-    server = Go2Server(world, site, speed)
+    scene = Scene(model_dir, site, with_viewer)
+    server = Go2Server(scene, site, speed)
     async with websockets.serve(server.handle_client, host, port):
         print(f"Sitio cargado: {site.name} ({len(site.checkpoints)} checkpoints)")
         print(f"Servidor del Go2 escuchando en ws://{host}:{port} (velocidad x{speed})")

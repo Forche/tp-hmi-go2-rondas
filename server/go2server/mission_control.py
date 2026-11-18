@@ -1,26 +1,22 @@
-"""Motor de la ronda del robot: mismo comportamiento que RobotSimulator.kt en la app.
+"""Lógica de la ronda: mismo comportamiento que RobotSimulator.kt en la app.
 
-Es sincrónico: tick() avanza el tiempo simulado y handle() decide si acepta una orden.
-Las alertas y los eventos usan directamente el formato del contrato JSON.
+Es sincrónico: tick() deja pasar el tiempo y handle() decide si acepta una orden. Las alertas y los
+eventos usan directamente el formato del contrato JSON.
 
-El motor decide a qué distancia del recorrido tiene que ir el robot; el cuerpo (body.py) lo lleva y le
-informa dónde está y qué tiene adelante. Con el cuerpo de MuJoCo, la posición, la velocidad, el
-obstáculo y las fotos salen de la simulación.
+No simula nada: todo lo que depende del robot (moverse, dónde está, el LiDAR, la cámara, los sensores
+del ambiente y la batería) se lo pide a `robot` (ver robot_interface.py). Con el robot simulado o con un
+Go2 real, este archivo es el mismo.
 """
 
-import random
 import time
-
-from .body import SPEED_MPS, KinematicBody
-
 
 INSPECTION_SECONDS = 4.0
 OBSTACLE_GAP = 0.9          # m entre el centro del robot y el obstáculo al detenerse
 LIDAR_RANGE = 4.0           # m de camino que revisa por delante
-CHARGE_RATE = 0.25
-MOVING_DRAIN = 0.012
-IDLE_DRAIN = 0.004
-LOW_BATTERY_DRAIN_MULTIPLIER = 15.0
+# Consumo de referencia del robot, para estimar cuánto le dura la batería (regla R5 y autonomía).
+NOMINAL_SPEED_MPS = 0.5
+NOMINAL_MOVING_DRAIN = 0.012    # %/s caminando
+NOMINAL_IDLE_DRAIN = 0.004      # %/s quieto
 WATCH_READINGS = 3
 WATCH_INTERVAL_SECONDS = 10.0
 MAX_SECONDS_WITHOUT_LINK = 300.0
@@ -54,16 +50,13 @@ class Mission:
         return self.next_index >= len(self.targets)
 
 
-class Robot:
-    def __init__(self, robot_id, site, rng=None, body=None):
+class MissionControl:
+    def __init__(self, robot_id, site, robot):
         self.robot_id = robot_id
         self.site = site
-        self.rng = rng or random.Random()
         self.route = site.path
-        self.body = body or KinematicBody(site)
+        self.robot = robot
         self.state = "AT_BASE"
-        self.battery = 92.0
-        self.speed = 0.0
         self.mission = None
         self.alerts = []
         self.last_reading = None
@@ -71,9 +64,6 @@ class Robot:
         self.next_alert = 1
         self.events = []
         self.inspection_left = 0.0
-        self.obstacle_armed = False
-        self.high_temperature_armed = False
-        self.drain_multiplier = 1.0
         self.low_battery_alerted = False
         self.critical_battery_alerted = False
         self.watch_left = 0
@@ -84,12 +74,12 @@ class Robot:
 
     @property
     def distance(self):
-        """Dónde está el robot sobre el recorrido, según su cuerpo."""
-        return self.body.distance
+        """Dónde está el robot sobre el recorrido, según el robot."""
+        return self.robot.distance
 
     @property
-    def forward(self):
-        return self.body.forward
+    def battery(self):
+        return self.robot.battery
 
     # ------------------------------------------------------------ tiempo
 
@@ -98,18 +88,19 @@ class Robot:
             self.mission.elapsed += dt
         self._update_link(dt)
         if self.state == "AT_BASE":
-            self._charge(dt)
+            self._at_base()
         elif self.state == "ON_MISSION":
             self._advance_mission(dt)
         elif self.state == "RETURNING":
-            self._move_towards(0.0, dt)
             if self.distance <= 0.0:
                 self._arrive_at_base()
+            else:
+                self.robot.go_to(0.0)
         else:
-            self._halt()
+            self.robot.hold()
             if self.state == "AWAITING_DECISION":
                 self._tick_watch(dt)
-        self._drain_battery(dt)
+        self.robot.update(dt)
         self._check_battery()
 
     def set_link_available(self, available):
@@ -125,10 +116,8 @@ class Robot:
             self._resolve_decisions()
             self.state = "RETURNING"
 
-    def _charge(self, dt):
-        self._halt()
-        self.drain_multiplier = 1.0
-        self.battery = min(100.0, self.battery + CHARGE_RATE * dt)
+    def _at_base(self):
+        self.robot.hold()
         if self.battery > self.site.battery_warning + 5:
             self.low_battery_alerted = False
         if self.battery > self.site.battery_critical + 5:
@@ -139,7 +128,7 @@ class Robot:
         if m is None:
             return
         if self.inspection_left > 0:
-            self._halt()
+            self.robot.hold()
             self.inspection_left -= dt
             if self.inspection_left <= 0:
                 self._complete_inspection(m)
@@ -151,42 +140,24 @@ class Robot:
         checkpoint_id, target_distance = target
         if self._lacks_battery_for_basement(m, checkpoint_id):
             return
-        if self.obstacle_armed:
-            # Escenario E4: aparece una caja en el pasillo, entre el robot y el próximo checkpoint.
-            at = self.distance + min(3.0, (target_distance - self.distance) / 2)
-            if target_distance - self.distance > 2.5 and self._fits_obstacle(at):
-                self.body.place_obstacle(at)
-                self.obstacle_armed = False
         # LiDAR: si algo bloquea el camino antes del checkpoint, frena antes y pide una decisión.
-        ahead = self.body.obstacle_ahead(LIDAR_RANGE)
+        ahead = self.robot.obstacle_ahead(LIDAR_RANGE)
         blocked = ahead is not None and self.distance + ahead - OBSTACLE_GAP < target_distance
         if blocked and ahead - OBSTACLE_GAP <= 0.15:
-            self._halt()
+            self.robot.hold()
             self.state = "AWAITING_DECISION"
-            self._raise_alert("WARNING", "OBSTACLE", checkpoint_id, None, None, ["SKIP", "RETRY"],
-                              photo=f"{m.id}_{checkpoint_id}_obstaculo")
+            photo = self.robot.take_photo(f"{m.id}_{checkpoint_id}_obstaculo")
+            self._raise_alert("WARNING", "OBSTACLE", checkpoint_id, None, None, ["SKIP", "RETRY"], photo)
             return
-        stop_at = self.distance + ahead - OBSTACLE_GAP if blocked else target_distance
-        self._move_towards(stop_at, dt)
         if self.distance >= target_distance - EPSILON:
-            self._halt()
+            self.robot.hold()
             self.inspection_left = INSPECTION_SECONDS
-
-    def _move_towards(self, target, dt):
-        """Le pide al cuerpo que vaya hasta `target`; la velocidad es la que mide el cuerpo."""
-        self.body.set_goal(target)
-        self.body.advance(dt)
-        self.speed = self.body.speed
-
-    def _halt(self):
-        self.speed = 0.0
-        self.body.hold()
+            return
+        self.robot.go_to(self.distance + ahead - OBSTACLE_GAP if blocked else target_distance)
 
     def _arrive_at_base(self):
-        self.speed = 0.0
         self.inspection_left = 0.0
-        # Entre rondas el personal retira lo que haya quedado en el pasillo.
-        self.body.reset_at_base()
+        self.robot.dock()
         self.state = "AT_BASE"
         self._resolve_decisions()
         m = self.mission
@@ -210,21 +181,21 @@ class Robot:
         if target is None:
             return
         checkpoint_id = target[0]
-        reading = self._measure(checkpoint_id)
+        reading = self.robot.read_environment(checkpoint_id)
         self.last_reading = reading
         issues = self._evaluate(checkpoint_id, reading)
         status = "OK" if not issues else "ANOMALY"
         m.inspected += 1
         m.last_checkpoint = checkpoint_id
-        photo = f"{m.id}_{checkpoint_id}"
+        photo = self.robot.take_photo(f"{m.id}_{checkpoint_id}")
         self._emit({"kind": "CHECKPOINT_RESULT", "mission_id": m.id, "checkpoint_id": checkpoint_id,
-                    "status": status, "reading": reading, "photo_id": self._photo(photo)})
+                    "status": status, "reading": reading, "photo_id": photo})
         waits = False
         for code, severity, value, threshold in issues:
             needs_decision = code == "TEMPERATURE_HIGH" and severity == "CRITICAL"
             waits = waits or needs_decision
             self._raise_alert(severity, code, checkpoint_id, value, threshold,
-                              ["CONTINUE", "WATCH"] if needs_decision else [], photo=photo)
+                              ["CONTINUE", "WATCH"] if needs_decision else [], photo)
         m.next_index += 1
         if waits:
             self.state = "AWAITING_DECISION"
@@ -234,22 +205,6 @@ class Robot:
             self.state = "RETURNING"
         else:
             self.state = "ON_MISSION"
-
-    def _measure(self, checkpoint_id):
-        zone = self.site.checkpoints[checkpoint_id][1]
-        temperature, noise_baseline = self.site.typical_readings[zone]
-        if self.high_temperature_armed:
-            self.high_temperature_armed = False
-            temperature = self.site.temperature_limits[zone][1] + 1.1
-        else:
-            temperature += self.rng.uniform(-0.6, 0.6)
-        return {
-            "checkpoint_id": checkpoint_id,
-            "temperature_c": round(temperature, 1),
-            "humidity_pct": round(self.site.humidity_pct + self.rng.uniform(-4, 4), 1),
-            "noise_dba": round(noise_baseline + self.rng.uniform(-1.5, 1.5), 1),
-            "noise_baseline_dba": noise_baseline,
-        }
 
     def _evaluate(self, checkpoint_id, reading):
         zone = self.site.checkpoints[checkpoint_id][1]
@@ -262,14 +217,13 @@ class Robot:
         return []
 
     def _tick_watch(self, dt):
+        """Vigilar: repite la medición del punto cada tanto, sin moverse."""
         if self.watch_left <= 0 or self.last_reading is None:
             return
         self.watch_timer -= dt
         if self.watch_timer > 0:
             return
-        reading = dict(self.last_reading)
-        reading["temperature_c"] = round(reading["temperature_c"] + self.rng.uniform(-0.3, 0.3), 1)
-        self.last_reading = reading
+        self.last_reading = self.robot.read_environment(self.last_reading["checkpoint_id"])
         self.watch_left -= 1
         self.watch_timer = WATCH_INTERVAL_SECONDS
 
@@ -286,21 +240,19 @@ class Robot:
         below = [t for t in m.targets[m.next_index:] if site.level_at(site.checkpoints[t[0]][0][1]) == "BASEMENT"]
         farthest = max(t[1] for t in below)
         meters = (farthest - self.distance) + farthest
-        drain = (meters / SPEED_MPS * MOVING_DRAIN + len(below) * INSPECTION_SECONDS * IDLE_DRAIN) * self.drain_multiplier
+        # Si hoy consume más de lo normal (lo mide el robot), la estimación escala igual.
+        reference = NOMINAL_MOVING_DRAIN if self.robot.speed > 0 else NOMINAL_IDLE_DRAIN
+        factor = max(1.0, self.robot.battery_drain_rate() / reference)
+        drain = (meters / NOMINAL_SPEED_MPS * NOMINAL_MOVING_DRAIN
+                 + len(below) * INSPECTION_SECONDS * NOMINAL_IDLE_DRAIN) * factor
         needed = site.battery_critical + drain
         if self.battery >= needed:
             return False
         m.low_battery = True
         self._raise_alert("WARNING", "BATTERY_INSUFFICIENT_FOR_BASEMENT", checkpoint_id, self.battery, round(needed, 1))
-        self._halt()
+        self.robot.hold()
         self.state = "RETURNING"
         return True
-
-    def _drain_battery(self, dt):
-        if self.state == "AT_BASE":
-            return
-        rate = MOVING_DRAIN if self.speed > 0 else IDLE_DRAIN
-        self.battery = max(0.0, self.battery - rate * dt * self.drain_multiplier)
 
     def _check_battery(self):
         if self.state == "AT_BASE":
@@ -333,7 +285,7 @@ class Robot:
             if self._on_stairs():
                 return False, "ON_STAIRS"
             self.state = "PAUSED"
-            self._halt()
+            self.robot.hold()
             return True, None
         if name == "RESUME":
             if self.state not in ("PAUSED", "STOPPED"):
@@ -358,7 +310,7 @@ class Robot:
                 return False, "INVALID_STATE"
             self.stopped_while_returning = self.state == "RETURNING"
             self.state = "STOPPED"
-            self._halt()
+            self.robot.hold()
             return True, None
         if name == "ACK_ALERT":
             alert = self._alert(params.get("alert_id"))
@@ -400,7 +352,7 @@ class Robot:
             return False, "INVALID_STATE"
         if decision == "RETRY":
             # Vuelve a mirar con el LiDAR: si el camino sigue bloqueado, no puede seguir.
-            if self.body.obstacle_ahead(LIDAR_RANGE) is not None:
+            if self.robot.obstacle_ahead(LIDAR_RANGE) is not None:
                 return False, "OBSTACLE_PERSISTS"
             self._resolve(alert)
             self.state = "ON_MISSION"
@@ -412,8 +364,8 @@ class Robot:
                 m.last_checkpoint = target[0]
                 self._emit({"kind": "CHECKPOINT_RESULT", "mission_id": m.id, "checkpoint_id": target[0],
                             "status": "SKIPPED", "reading": None, "photo_id": None})
-                # Rodea el obstáculo (el resto de la ronda lo esquiva) y sigue con el próximo checkpoint.
-                self.body.bypass_obstacle()
+                # Rodea el obstáculo y sigue con el próximo checkpoint.
+                self.robot.bypass_obstacle()
                 m.next_index += 1
             self._resolve(alert)
             self.state = "RETURNING" if m.all_done else "ON_MISSION"
@@ -448,46 +400,20 @@ class Robot:
         self.stopped_while_returning = False
         return state
 
-    def _fits_obstacle(self, at):
-        """El obstáculo del escenario va en un tramo recto y lejos de la escalera, donde se puede rodear."""
-        route, margin = self.route, 2.2
-        if route.segment_index_at(at - margin) != route.segment_index_at(at + margin):
-            return False
-        return not self.site.on_stairs(*route.point_at(at), margin=-1.5)
-
     def _on_stairs(self):
-        return self.site.on_stairs(*self.route.point_at(self.distance))
-
-    # ------------------------------------------------------------ escenarios (consola del servidor)
-
-    def trigger(self, scenario):
-        if scenario == "LOW_BATTERY":
-            self.battery = min(self.battery, self.site.battery_warning + 1.0)
-            self.drain_multiplier = LOW_BATTERY_DRAIN_MULTIPLIER
-        elif scenario == "OBSTACLE":
-            self.obstacle_armed = True
-        elif scenario == "CLEAR_OBSTACLE":
-            self.obstacle_armed = False
-            self.body.clear_obstacle()
-        elif scenario == "HIGH_TEMPERATURE":
-            self.high_temperature_armed = True
+        return self.site.on_stairs(*self.robot.position())
 
     # ------------------------------------------------------------ salida
 
     def plan_position(self):
-        if self.state == "AT_BASE" and not self.body.has_camera:
-            return self.site.base
-        return self.body.position()
-
-    def heading(self):
-        return self.body.heading()
+        return self.robot.position()
 
     def drain_events(self):
         events, self.events = self.events, []
         return events
 
-    def telemetry(self, position, link):
-        """Arma el mensaje de telemetría. La posición la pasa quien la lee del cuerpo."""
+    def telemetry(self, link):
+        """Arma el mensaje de telemetría con lo que informa el robot."""
         self.sequence += 1
         m = self.mission
         decision = next((a for a in self.alerts if a["requires_decision"]), None)
@@ -500,43 +426,40 @@ class Robot:
                 "current_position": ids.index(current) + 1 if current in ids else len(ids),
                 "completed": m.inspected + m.skipped, "total": len(ids), "elapsed_s": int(m.elapsed),
             }
-        x, y = position
+        x, y = self.robot.position()
+        speed = self.robot.speed
         return {
             "type": "telemetry",
             "robot_id": self.robot_id,
             "seq": self.sequence,
             "timestamp": now_ms(),
             "connection": link,
-            "battery": {"percent": round(self.battery), "charging": self.state == "AT_BASE" and self.battery < 100,
-                        "est_minutes": round(self.battery / (MOVING_DRAIN * 60))},
+            "battery": {"percent": round(self.battery), "charging": self.robot.charging,
+                        "est_minutes": round(self.battery / (NOMINAL_MOVING_DRAIN * 60))},
             "state": self.state,
             "mission": mission,
             "location": {
                 "level": self.site.level_at(y),
                 "from_cp": m.last_checkpoint if m else None,
                 "to_cp": None if self.state == "RETURNING" or m is None or m.current is None else m.current[0],
-                "x": round(x, 2), "y": round(y, 2), "heading_deg": self.heading(),
-                "confidence": 0.81 if self._on_stairs() else round(0.91 + self.rng.uniform(0, 0.05), 2),
+                "x": round(x, 2), "y": round(y, 2), "heading_deg": self.robot.heading(),
+                "confidence": self.robot.location_confidence(),
             },
-            "motion": {"speed_mps": round(self.speed, 2), "moving": self.speed > 0},
+            "motion": {"speed_mps": round(speed, 2), "moving": speed > 0},
             "active_alerts": sum(1 for a in self.alerts if not a["acknowledged"]),
             "environment": self.last_reading,
         }
 
     # ------------------------------------------------------------ auxiliares
 
-    def _photo(self, photo_id):
-        """Id de la foto de la cámara frontal, o None si el cuerpo no tiene cámara (los tests)."""
-        return photo_id if self.body.has_camera else None
-
-    def _raise_alert(self, severity, code, checkpoint_id, measured, threshold, options=None, photo=None):
+    def _raise_alert(self, severity, code, checkpoint_id, measured, threshold, options=None, photo_id=None):
         options = options or []
         alert = {
             "id": f"a-{self.next_alert}", "timestamp": now_ms(), "severity": severity, "code": code,
             "checkpoint_id": checkpoint_id,
             "measured": round(measured, 1) if measured is not None else None,
             "threshold": threshold, "requires_decision": bool(options), "options": options,
-            "acknowledged": False, "photo_id": self._photo(photo) if photo else None,
+            "acknowledged": False, "photo_id": photo_id,
         }
         self.next_alert += 1
         self.alerts.insert(0, alert)
