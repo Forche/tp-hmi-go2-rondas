@@ -3,6 +3,10 @@
 Es sincrónico: tick() deja pasar el tiempo y handle() decide si acepta una orden. Las alertas y los
 eventos usan directamente el formato del contrato JSON.
 
+Criterio ante un problema: si el robot lo puede resolver solo, saca una foto, avisa y sigue (caja en el
+camino, agua, mediciones fuera de rango, humo: vuelve a la base). Sólo pide la intervención del operador
+cuando no puede: un obstáculo sobre el punto que tiene que inspeccionar (escenario E4).
+
 No simula nada: todo lo que depende del robot (moverse, dónde está, el LiDAR, la cámara, los sensores
 del ambiente y la batería) se lo pide a `robot` (ver robot_interface.py). Con el robot simulado o con un
 Go2 real, este archivo es el mismo.
@@ -14,14 +18,12 @@ INSPECTION_SECONDS = 4.0
 OBSTACLE_GAP = 0.9          # m entre el centro del robot y el obstáculo al detenerse
 LIDAR_RANGE = 4.0           # m de camino que revisa por delante
 CAMERA_RANGE = 3.5          # m de camino en los que la cámara distingue agua en el piso
-WATER_GAP = 1.3             # m entre el centro del robot y el agua al detenerse
 SMOKE_RANGE = 4.5           # m a los que el sensor de humo detecta un foco por delante
+CHECKPOINT_CLEARANCE = 1.0  # m: un obstáculo a menos de esto del checkpoint tapa el punto de inspección
 # Consumo de referencia del robot, para estimar cuánto le dura la batería (regla R5 y autonomía).
 NOMINAL_SPEED_MPS = 0.5
 NOMINAL_MOVING_DRAIN = 0.012    # %/s caminando
 NOMINAL_IDLE_DRAIN = 0.004      # %/s quieto
-WATCH_READINGS = 3
-WATCH_INTERVAL_SECONDS = 10.0
 MAX_SECONDS_WITHOUT_LINK = 300.0
 MAX_ALERTS = 30
 EPSILON = 1e-6
@@ -70,8 +72,6 @@ class MissionControl:
         self.inspection_left = 0.0
         self.low_battery_alerted = False
         self.critical_battery_alerted = False
-        self.watch_left = 0
-        self.watch_timer = 0.0
         self.stopped_while_returning = False
         self.link_available = True
         self.seconds_without_link = 0.0
@@ -102,8 +102,6 @@ class MissionControl:
                 self.robot.go_to(0.0)
         else:
             self.robot.hold()
-            if self.state == "AWAITING_DECISION":
-                self._tick_watch(dt)
         self.robot.update(dt)
         self._check_battery()
 
@@ -155,28 +153,27 @@ class MissionControl:
             self.state = "RETURNING"
             self._raise_alert("CRITICAL", "SMOKE_DETECTED", checkpoint_id, None, None, [], photo)
             return
-        # Lo que tiene por delante y lo hace frenar: agua en el piso (cámara) o algo que bloquea (LiDAR).
-        stops = []
-        water = self.robot.water_ahead(CAMERA_RANGE)
-        if water is not None:
-            stops.append((water - WATER_GAP, "WATER_DETECTED"))
+        # Agua en el piso (la ve la cámara): la rodea sin pisarla y avisa. Alguien tiene que ir a ver la pérdida.
+        if self.robot.water_ahead(CAMERA_RANGE) is not None:
+            photo = self.robot.take_photo(f"{m.id}_{checkpoint_id}_agua_{now_ms()}")
+            self.robot.bypass_water()
+            self._raise_alert("CRITICAL", "WATER_DETECTED", checkpoint_id, None, None, [], photo)
         ahead = self.robot.obstacle_ahead(LIDAR_RANGE)
-        if ahead is not None:
-            stops.append((ahead - OBSTACLE_GAP, "OBSTACLE"))
-        stops = [(gap, code) for gap, code in stops if self.distance + gap < target_distance]
-        if stops:
-            gap, code = min(stops)
-            if gap <= 0.15:
-                self.robot.hold()
-                self.state = "AWAITING_DECISION"
-                if code == "WATER_DETECTED":
-                    photo = self.robot.take_photo(f"{m.id}_{checkpoint_id}_agua")
-                    self._raise_alert("CRITICAL", code, checkpoint_id, None, None, ["CONTINUE", "WATCH"], photo)
-                else:
-                    photo = self.robot.take_photo(f"{m.id}_{checkpoint_id}_obstaculo")
-                    self._raise_alert("WARNING", code, checkpoint_id, None, None, ["SKIP", "RETRY"], photo)
+        if ahead is not None and self.distance + ahead + CHECKPOINT_CLEARANCE < target_distance:
+            # En el camino, con lugar para pasar: lo rodea solo y avisa.
+            photo = self.robot.take_photo(f"{m.id}_{checkpoint_id}_obstaculo_{now_ms()}")
+            self.robot.bypass_obstacle()
+            self._raise_alert("WARNING", "OBSTACLE_AVOIDED", checkpoint_id, None, None, [], photo)
+        elif ahead is not None:
+            # Tapa el punto de inspección (escenario E4): no puede medir, frena y pide una decisión.
+            gap = ahead - OBSTACLE_GAP
+            if gap > 0.15:
+                self.robot.go_to(self.distance + gap)
                 return
-            self.robot.go_to(self.distance + gap)
+            self.robot.hold()
+            self.state = "AWAITING_DECISION"
+            photo = self.robot.take_photo(f"{m.id}_{checkpoint_id}_obstaculo_{now_ms()}")
+            self._raise_alert("WARNING", "OBSTACLE", checkpoint_id, None, None, ["SKIP", "RETRY"], photo)
             return
         if self.distance >= target_distance - EPSILON:
             self.robot.hold()
@@ -219,16 +216,11 @@ class MissionControl:
         photo = self.robot.take_photo(f"{m.id}_{checkpoint_id}")
         self._emit({"kind": "CHECKPOINT_RESULT", "mission_id": m.id, "checkpoint_id": checkpoint_id,
                     "status": status, "reading": reading, "photo_id": photo})
-        waits = False
+        # Una medición fuera de rango la resuelve una persona en el lugar: avisa, con la foto del punto, y sigue.
         for code, severity, value, threshold in issues:
-            needs_decision = code == "TEMPERATURE_HIGH" and severity == "CRITICAL"
-            waits = waits or needs_decision
-            self._raise_alert(severity, code, checkpoint_id, value, threshold,
-                              ["CONTINUE", "WATCH"] if needs_decision else [], photo)
+            self._raise_alert(severity, code, checkpoint_id, value, threshold, [], photo)
         m.next_index += 1
-        if waits:
-            self.state = "AWAITING_DECISION"
-        elif not self.link_available:
+        if not self.link_available:
             self.state = "PAUSED"  # regla R3: sin enlace, espera en un lugar seguro
         elif m.all_done:
             self.state = "RETURNING"
@@ -259,17 +251,6 @@ class MissionControl:
         elif n - base >= noise_warning:
             issues.append(("NOISE_HIGH", "WARNING", n, base + noise_warning))
         return issues
-
-    def _tick_watch(self, dt):
-        """Vigilar una temperatura: repite la medición del punto cada tanto, sin moverse."""
-        if self.watch_left <= 0 or self.last_reading is None:
-            return
-        self.watch_timer -= dt
-        if self.watch_timer > 0:
-            return
-        self.last_reading = self.robot.read_environment(self.last_reading["checkpoint_id"])
-        self.watch_left -= 1
-        self.watch_timer = WATCH_INTERVAL_SECONDS
 
     # ------------------------------------------------------------ batería
 
@@ -417,19 +398,6 @@ class MissionControl:
             self._resolve(alert)
             self.state = "RETURNING" if m.all_done else "ON_MISSION"
             return True, None
-        if decision == "CONTINUE":
-            self.watch_left = 0
-            if alert["code"] == "WATER_DETECTED":
-                self.robot.bypass_water()  # sigue, rodeando el agua sin pisarla
-            self._resolve(alert)
-            self.state = "RETURNING" if m.all_done else "ON_MISSION"
-            return True, None
-        if decision == "WATCH":
-            # Se queda quieto mirando. Si es una temperatura, además repite la medición.
-            if alert["code"] == "TEMPERATURE_HIGH":
-                self.watch_left = WATCH_READINGS
-                self.watch_timer = WATCH_INTERVAL_SECONDS
-            return True, None
         return False, "INVALID_STATE"
 
     def _go_back(self):
@@ -528,7 +496,6 @@ class MissionControl:
         for alert in self.alerts:
             if alert["requires_decision"]:
                 self._resolve(alert)
-        self.watch_left = 0
 
     def _emit(self, event):
         event["type"] = "event"

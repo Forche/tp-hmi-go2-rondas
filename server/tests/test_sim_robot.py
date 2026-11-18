@@ -79,11 +79,10 @@ class SimulatedRobotTest(unittest.TestCase):
         self.make()
         self.mission_control.handle("START_MISSION", {"mission": "FULL_ROUND"})
         self.robot.trigger("WATER")
-        self.run_until(lambda: self.mission_control.state == "AWAITING_DECISION")
+        self.run_until(lambda: any(a["code"] == "WATER_DETECTED" for a in self.mission_control.alerts))
         alert = self.mission_control.alerts[0]
-        self.assertEqual("WATER_DETECTED", alert["code"])
         self.assertIsNotNone(alert["photo_id"])
-        self.mission_control.handle("INCIDENT_DECISION", {"alert_id": alert["id"], "decision": "CONTINUE"})
+        self.assertFalse(alert["requires_decision"])
         water = self.site.path.point_at(self.robot.water_at)
         closest = float("inf")
         for _ in range(120):

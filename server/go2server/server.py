@@ -8,6 +8,7 @@ Mensajes (contrato del TP, no el protocolo oficial de Unitree):
   app -> servidor: command
   servidor -> app: site (al conectarse), telemetry (1 por segundo), alerts (cuando cambian), event,
                    photo (la foto de la cámara frontal en un checkpoint, o ante un obstáculo, agua o humo),
+                   camera_frame (cámara en vivo, mientras la app la pida con un mensaje camera),
                    command_response
 """
 
@@ -28,11 +29,13 @@ from .sim_scene import Scene
 ROBOT_ID = "go2-02"
 MAX_QUEUED_EVENTS = 500
 FRAME_SECONDS = 0.02  # 50 cuadros por segundo de física y de ventana
+LIVE_CAMERA_SECONDS = 0.25  # cámara en vivo: 4 imágenes por segundo
 
 RANDOM_LINK_CUT_SECONDS = 20
 
 HELP = """Comandos de consola:
-  obstaculo      pone una caja en el pasillo, antes del próximo checkpoint
+  obstaculo      pone una caja sobre el próximo checkpoint: tapa el punto y pide una decisión (E4)
+  caja           pone una caja en el camino: el robot la rodea solo y avisa
   despejar       saca la caja (después, "Reintentar" desde la app funciona)
   agua           aparece agua en el piso, sobre el camino
   humo           aparece un foco de fuego con humo al costado del camino
@@ -63,6 +66,7 @@ class Go2Server:
         self.last_alerts = None
         self.marks = {}
         self.random_situations = None  # con el modo aleatorio activo, un RandomSituations
+        self.camera_viewers = set()     # apps que están mirando la cámara en vivo
 
     def link_up(self):
         return time.time() >= self.link_down_until
@@ -80,10 +84,17 @@ class Go2Server:
                 message = json.loads(raw)
                 if message.get("type") == "command":
                     asyncio.create_task(self.respond(websocket, message))
+                elif message.get("type") == "camera":
+                    # Cámara en vivo: la app la pide al abrir la pantalla y la corta al salir.
+                    if message.get("enabled"):
+                        self.camera_viewers.add(websocket)
+                    else:
+                        self.camera_viewers.discard(websocket)
         except websockets.ConnectionClosed:
             pass
         finally:
             self.clients.discard(websocket)
+            self.camera_viewers.discard(websocket)
             print("App desconectada")
 
     async def respond(self, websocket, message):
@@ -113,11 +124,15 @@ class Go2Server:
 
     async def run(self):
         next_tick = time.monotonic() + 1.0
+        next_frame = time.monotonic()
         while True:
             await asyncio.sleep(FRAME_SECONDS)
             with self.scene.lock():
                 self.body.frame(FRAME_SECONDS * self.speed)
             self.scene.sync()
+            if self.camera_viewers and time.monotonic() >= next_frame:
+                next_frame = time.monotonic() + LIVE_CAMERA_SECONDS
+                self.send_live_frame()
             if time.monotonic() >= next_tick:
                 next_tick += 1.0
                 self.mission_control.set_link_available(self.link_up())
@@ -179,6 +194,17 @@ class Go2Server:
         if self.mission_control.state == "ON_MISSION" and m is not None and m.current and self.mission_control.inspection_left > 0:
             marks.setdefault(m.current[0], ("INSPECTING", None))
         self.scene.show_checkpoints(marks)
+
+    def send_live_frame(self):
+        """Cámara en vivo: no se guarda ni se encola; sin enlace, simplemente no llega."""
+        if not self.link_up():
+            return
+        jpeg = self.robot.live_frame()
+        if jpeg is None:
+            return
+        websockets.broadcast(self.camera_viewers, json.dumps({
+            "type": "camera_frame", "timestamp": int(time.time() * 1000),
+            "jpeg_base64": base64.b64encode(jpeg).decode("ascii")}))
 
     def photo_messages(self):
         """Las fotos que sacó el robot desde el último envío, como mensajes `photo` del contrato."""

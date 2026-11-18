@@ -7,7 +7,8 @@
 - Sensores del ambiente: lecturas inventadas a partir de los valores típicos del archivo de sitio.
 - Detección de agua (cámara) y de humo (módulo de sensores): se simulan sabiendo dónde está el charco o
   el fuego; un robot real los detectaría por imagen y con un sensor de humo.
-- Escenarios de prueba (consola del servidor): batería baja, una caja en el pasillo, agua, fuego,
+- Escenarios de prueba (consola del servidor): batería baja, una caja en el camino o tapando un
+  checkpoint, agua, fuego,
   temperatura alta, humedad o ruido fuera de rango. Son cosas que le pasan al robot o al lugar, por eso
   viven acá y no en la lógica de la ronda.
 """
@@ -27,7 +28,8 @@ FIRE_SIDE_OFFSET = 1.0    # m: el fuego está al costado del camino (en un rack 
 # Escenarios que se pueden provocar (nombre de la consola -> nombre interno).
 SCENARIOS = {
     "bateria": "LOW_BATTERY",
-    "obstaculo": "OBSTACLE",
+    "obstaculo": "OBSTACLE",        # tapa el próximo checkpoint (E4)
+    "caja": "OBSTACLE_PATH",        # en el camino: el robot la rodea solo
     "despejar": "CLEAR_OBSTACLE",
     "agua": "WATER",
     "humo": "SMOKE",
@@ -164,6 +166,9 @@ class SimulatedRobot(RobotInterface):
             self.photos.append((photo_id, self.scene.photo(*self.body.pose())))
         return photo_id
 
+    def live_frame(self):
+        return None if self.scene is None else self.scene.photo(*self.body.pose(), quality=60)
+
     def drain_photos(self):
         photos, self.photos = self.photos, []
         return photos
@@ -191,6 +196,7 @@ class SimulatedRobot(RobotInterface):
             self.drain_multiplier = LOW_BATTERY_DRAIN_MULTIPLIER
         elif scenario == "CLEAR_OBSTACLE":
             self.armed.discard("OBSTACLE")
+            self.armed.discard("OBSTACLE_PATH")
             self.body.clear_obstacle()
         else:
             self.armed.add(scenario)
@@ -200,11 +206,15 @@ class SimulatedRobot(RobotInterface):
         if not self.armed or not self.body.forward:
             return
         here, gap = self.body.distance, self.body.goal - self.body.distance
-        if "OBSTACLE" in self.armed:
+        if "OBSTACLE" in self.armed and gap > 2.5 and self._fits_detour(self.body.goal):
+            # Escenario E4: una caja sobre el próximo checkpoint, que tapa el punto de inspección.
+            self.body.place_obstacle(self.body.goal)
+            self.armed.discard("OBSTACLE")
+        if "OBSTACLE_PATH" in self.armed:
             at = here + min(3.0, gap / 2)
-            if gap > 2.5 and self._fits_detour(at):
+            if gap > 4.5 and self._fits_detour(at):
                 self.body.place_obstacle(at)
-                self.armed.discard("OBSTACLE")
+                self.armed.discard("OBSTACLE_PATH")
         if "WATER" in self.armed and self.water_at is None:
             at = here + min(3.5, gap / 2)
             if gap > 3.0 and self._fits_detour(at):

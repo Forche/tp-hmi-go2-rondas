@@ -278,7 +278,7 @@ class Scene:
         cam.elevation = CAMERA_PITCH_DEG
         return cam
 
-    def photo(self, body_pos, body_rot):
+    def photo(self, body_pos, body_rot, quality=82):
         """Foto JPEG de la cámara frontal: lo que el robot tiene adelante en este momento."""
         if self.renderer is None:
             self.renderer = mujoco.Renderer(self.model, height=PHOTO_SIZE[1], width=PHOTO_SIZE[0])
@@ -293,5 +293,5 @@ class Scene:
             self.model.vis.global_.fovy = fovy
         pixels = self.renderer.render()
         buffer = io.BytesIO()
-        Image.fromarray(pixels).save(buffer, "JPEG", quality=82)
+        Image.fromarray(pixels).save(buffer, "JPEG", quality=quality)
         return buffer.getvalue()

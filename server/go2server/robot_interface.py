@@ -82,6 +82,10 @@ class RobotInterface:
         """Saca una foto con la cámara frontal y la guarda con ese id. Devuelve el id, o None si no hay cámara."""
         raise NotImplementedError
 
+    def live_frame(self):
+        """Cámara en vivo: un JPEG de lo que ve la cámara frontal ahora (no se guarda), o None si no hay cámara."""
+        raise NotImplementedError
+
     def drain_photos(self):
         """Las fotos sacadas desde la última vez: lista de (id, JPEG)."""
         raise NotImplementedError
