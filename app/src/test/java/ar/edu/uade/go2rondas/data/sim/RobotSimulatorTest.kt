@@ -189,6 +189,18 @@ class RobotSimulatorTest {
     }
 
     @Test
+    fun `at x10 the robot still sees what is on the way`() {
+        // Con el modo demo a x10 cada ciclo son 10 s simulados: el robot avanza 5 m entre dos ciclos.
+        startFullRound()
+        simulator.trigger(SimulationScenario.OBSTACLE_PATH)
+        simulator.trigger(SimulationScenario.WATER_LEAK)
+        repeat(60) { simulator.tick(10.0) }
+        val codes = simulator.alerts().map { it.code }
+        assertTrue(AlertCode.OBSTACLE_AVOIDED in codes)
+        assertTrue(AlertCode.WATER_DETECTED in codes)
+    }
+
+    @Test
     fun `return to base interrupts the round and cancel cancels it`() {
         startFullRound()
         runUntil { inspected().size == 1 }

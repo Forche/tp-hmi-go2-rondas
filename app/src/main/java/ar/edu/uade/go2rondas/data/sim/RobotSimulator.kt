@@ -159,20 +159,20 @@ class RobotSimulator(
         placeArmedHazards(target)
         // Humo o fuego por delante: no se acerca, corta la ronda y vuelve a la base.
         smokeAt?.let { smoke ->
-            if (smoke - distance in 0.0..SMOKE_RANGE) {
+            if (smoke - distance <= SMOKE_RANGE) {  // también si en este ciclo ya lo pasó (velocidad alta)
                 raiseSmoke(m, target)
                 return
             }
         }
         // Lo que el robot puede resolver solo: lo rodea, avisa y sigue.
         waterAt?.let { water ->
-            if (water - distance in 0.0..CAMERA_RANGE) {
+            if (water - distance <= CAMERA_RANGE) {
                 waterAt = null
                 raiseAlert(AlertSeverity.CRITICAL, AlertCode.WATER_DETECTED, target.checkpoint.id, null, null)
             }
         }
         pathObstacleAt?.let { obstacle ->
-            if (obstacle - distance in 0.0..LIDAR_RANGE) {
+            if (obstacle - distance <= LIDAR_RANGE) {
                 pathObstacleAt = null
                 raiseAlert(AlertSeverity.WARNING, AlertCode.OBSTACLE_AVOIDED, target.checkpoint.id, null, null)
             }
@@ -198,7 +198,7 @@ class RobotSimulator(
             obstacleArmed = false
         }
         if (pathObstacleArmed && pathObstacleAt == null && gap > 4.5) {
-            pathObstacleAt = distance + min(4.5, gap / 2)
+            pathObstacleAt = distance + min(LIDAR_RANGE - 0.5, gap / 2)
             pathObstacleArmed = false
         }
         if (waterArmed && waterAt == null && gap > 3.0) {
