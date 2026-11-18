@@ -25,6 +25,8 @@ BYPASS_OFFSET = 0.8           # m: cuánto se corre hacia un costado para rodear
 BYPASS_FULL = 0.9             # m antes y después del obstáculo con el corrimiento completo
 BYPASS_RAMP = 1.2             # m para correrse y para volver al recorrido
 STAND_HEIGHT = 0.25             # m: altura del tronco parado
+FALL_TILT_DEG = 50.0          # inclinación del tronco a partir de la cual se considera caído
+RECOVERY_SECONDS = 2.0        # s caído antes de levantarse solo
 STAIRS_MARGIN = 0.7            # m alrededor de la escalera donde el tronco va guiado
 OBSTACLE_SIZE = (0.25, 0.25, 0.25)  # media caja (m)
 
@@ -136,6 +138,8 @@ class PhysicsBody(KinematicBody):
         self.guided = False
         self.measured_speed = 0.0
         self.yaw_goal = 0.0
+        self.fallen_for = 0.0
+        self.recoveries = 0
         self._hide_obstacle()
         x, y = self.route.point_at(0.0)
         self.yaw_goal = self._route_yaw(0.0, True)
@@ -205,7 +209,25 @@ class PhysicsBody(KinematicBody):
             self._guided_frame(seconds, moving)
         else:
             self._physics_frame(seconds, moving, tx, ty)
+            self._check_fall(seconds)
         self._measure()
+
+    def _check_fall(self, seconds):
+        """Como el "recovery stand" del Go2: si quedó volcado, se levanta solo donde está y sigue."""
+        w, x, y, z = self.data.qpos[3:7]
+        up = 1 - 2 * (x * x + y * y)  # cuánto apunta hacia arriba el eje vertical del tronco
+        if up >= math.cos(math.radians(FALL_TILT_DEG)):
+            self.fallen_for = 0.0
+            return
+        self.fallen_for += seconds
+        if self.fallen_for < RECOVERY_SECONDS:
+            return
+        self.fallen_for = 0.0
+        self.recoveries += 1
+        self.reference = self.distance
+        px, py = self._path_point(self.distance)
+        self._set_pose(px, py, self._route_yaw(self.distance, self.forward))
+        print("El robot se cayó y se levantó solo")
 
     def _physics_frame(self, seconds, moving, tx, ty):
         m, d = self.model, self.data

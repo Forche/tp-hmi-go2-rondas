@@ -122,6 +122,16 @@ class SimulatedRobotTest(unittest.TestCase):
         flame = sum(1 for r, g, b in pixels if r > 200 and 60 < g < 170 and b < 80)
         self.assertGreater(flame, 100)
 
+    def test_a_fallen_robot_gets_up_by_itself_and_goes_on(self):
+        self.make()
+        self.mission_control.handle("START_MISSION", {"mission": "FULL_ROUND"})
+        self.run_until(lambda: self.body.distance > 3.0)
+        # Lo tumba de costado.
+        self.scene.data.qpos[3:7] = [math.cos(math.pi / 4), math.sin(math.pi / 4), 0.0, 0.0]
+        self.run_until(lambda: self.body.recoveries == 1, max_seconds=10)
+        self.assertLess(self.tilt_deg(), 15)
+        self.run_until(lambda: self.mission_control.mission.inspected == 1)
+
     def test_the_front_camera_takes_a_jpeg(self):
         from PIL import Image
         self.make()
