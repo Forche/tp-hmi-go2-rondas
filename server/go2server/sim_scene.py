@@ -71,6 +71,20 @@ SCENE_TEMPLATE = """<mujoco model="go2 - {name}">
     <body name="obstaculo" mocap="true" pos="0 0 -50">
       <geom type="box" size="0.25 0.25 0.25" rgba="0.80 0.42 0.12 1" group="1"/>
     </body>
+    <!-- Escenarios: un charco en el piso (no frena al LiDAR: es plano) y un foco de fuego con humo
+         al costado del camino. Sólo se ven; no chocan con nada. -->
+    <body name="charco" mocap="true" pos="0 0 -50">
+      <geom type="cylinder" size="0.75 0.004" pos="0 0 0" rgba="0.20 0.45 0.85 0.80" contype="0" conaffinity="0" group="1"/>
+      <geom type="cylinder" size="0.45 0.004" pos="0.55 0.3 0" rgba="0.20 0.45 0.85 0.80" contype="0" conaffinity="0" group="1"/>
+    </body>
+    <body name="fuego" mocap="true" pos="0 0 -50">
+      <geom type="capsule" size="0.12 0.18" pos="0 0 0.25" rgba="0.98 0.45 0.08 0.95" contype="0" conaffinity="0" group="1"/>
+      <geom type="capsule" size="0.09 0.14" pos="0.15 0.08 0.2" rgba="0.99 0.75 0.15 0.95" contype="0" conaffinity="0" group="1"/>
+      <geom type="capsule" size="0.08 0.12" pos="-0.12 -0.1 0.18" rgba="0.95 0.30 0.05 0.95" contype="0" conaffinity="0" group="1"/>
+      <geom type="sphere" size="0.35" pos="0 0 0.8" rgba="0.35 0.35 0.37 0.70" contype="0" conaffinity="0" group="1"/>
+      <geom type="sphere" size="0.45" pos="0.1 0.05 1.3" rgba="0.42 0.42 0.44 0.60" contype="0" conaffinity="0" group="1"/>
+      <geom type="sphere" size="0.55" pos="0.2 0.1 1.9" rgba="0.50 0.50 0.52 0.45" contype="0" conaffinity="0" group="1"/>
+    </body>
   </worldbody>
 </mujoco>
 """
@@ -203,6 +217,15 @@ class Scene:
     def lock(self):
         """La ventana dibuja desde otro hilo: el estado se toca con su lock tomado."""
         return self.viewer.lock() if self.viewer is not None else contextlib.nullcontext()
+
+    def show_hazard(self, name, x=None, y=None):
+        """Pone en el plano (x, y) el charco ("charco") o el fuego ("fuego"); sin posición, lo saca."""
+        mocap = self.model.body_mocapid[self.model.body(name).id]
+        with self.lock():
+            if x is None:
+                self.data.mocap_pos[mocap] = [0.0, 0.0, -50.0]
+            else:
+                self.data.mocap_pos[mocap] = [x, -y, self.site.floor_z(x, y) + 0.025]
 
     def show_checkpoints(self, marks):
         """Estado de cada checkpoint en la ronda actual: {cp: (estado, lectura)}."""

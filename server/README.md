@@ -60,9 +60,11 @@ cd mujoco_menagerie && git sparse-checkout set unitree_go2
 | `--port N` | Puerto del WebSocket (por defecto 8765) |
 | `--no-console` | Sin comandos por consola, para correrlo en segundo plano |
 
-En la consola se pueden provocar los escenarios: `obstaculo` (una caja en el pasillo, antes del próximo checkpoint), `despejar` (saca la caja), `temperatura`, `bateria`, `corte [s]`, `velocidad N`, `estado`.
+En la consola se pueden provocar los escenarios: `obstaculo` (una caja en el pasillo, antes del próximo checkpoint), `despejar` (saca la caja), `agua` (un charco sobre el camino), `humo` (un foco de fuego con humo al costado del camino), `temperatura`, `humedad`, `ruido` (la próxima medición sale de rango), `bateria`, `corte [s]`, `aleatorio` (activa o desactiva las situaciones al azar durante la ronda, `sim_random.py`), `velocidad N`, `estado`.
 
-Con la caja en el pasillo, *Reintentar* desde la app vuelve rechazada porque el LiDAR la sigue viendo; después de `despejar`, *Reintentar* se acepta y el robot sigue. Con *Saltear*, el robot rodea la caja por un costado. Al volver a la base la caja se retira.
+Con la caja en el pasillo, *Reintentar* desde la app vuelve rechazada porque el LiDAR la sigue viendo; después de `despejar`, *Reintentar* se acepta y el robot sigue. Con *Saltear*, el robot rodea la caja por un costado. Al volver a la base la caja, el agua y el fuego se retiran.
+
+El charco no lo ve el LiDAR (es plano): lo ve la cámara a 3,5 m. El humo lo detecta el módulo de sensores a 4,5 m. Las dos detecciones se simulan sabiendo dónde está cada cosa; un robot real las haría por imagen y con un sensor de humo.
 
 ### Conectar la app
 

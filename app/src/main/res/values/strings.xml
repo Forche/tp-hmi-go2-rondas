@@ -78,6 +78,8 @@
     <string name="alert_battery_low">Batería baja</string>
     <string name="alert_battery_critical">Batería crítica</string>
     <string name="alert_battery_basement">No alcanza la batería para el subsuelo</string>
+    <string name="alert_water">Agua en el piso</string>
+    <string name="alert_smoke">Humo o fuego</string>
     <string name="alert_unacknowledged">Sin reconocer</string>
     <string name="alert_acknowledged">Reconocida</string>
     <string name="alert_detail_obstacle">Antes de %1$s · el robot se detuvo</string>
@@ -86,6 +88,8 @@
     <string name="alert_detail_noise">%1$s · %2$.0f dB(A) (umbral %3$.0f dB(A))</string>
     <string name="alert_detail_battery">%1$.0f %% (umbral %2$.0f %%)</string>
     <string name="alert_detail_battery_basement">%1$.0f %%: para bajar, inspeccionar y volver necesita %2$.0f %%. Vuelve a la base sin bajar.</string>
+    <string name="alert_detail_water">Antes de %1$s · el robot frenó antes del agua</string>
+    <string name="alert_detail_smoke">Antes de %1$s · el robot vuelve a la base sin acercarse; escalá al técnico de guardia</string>
     <string name="decision_continue">Continuar</string>
     <string name="decision_skip">Saltear %1$s</string>
     <string name="decision_retry">Reintentar</string>
@@ -113,6 +117,7 @@
     <string name="mission_spot_check_detail">Un checkpoint a elección</string>
     <string name="result_completed">Completada</string>
     <string name="result_interrupted">Interrumpida</string>
+    <string name="result_interrupted_battery">Interrumpida por batería</string>
     <string name="result_cancelled">Cancelada</string>
     <string name="result_aborted">Sin cerrar</string>
     <string name="result_in_progress">En curso</string>
@@ -250,6 +255,7 @@
     <string name="summary_next_skipped">Hay puntos salteados. Cuando se despeje el paso, lanzá una inspección puntual.</string>
     <string name="summary_next_battery">El robot volvió a cargar. Cuando tenga la batería mínima, repetí la ronda o inspeccioná los puntos que faltaron.</string>
     <string name="summary_next_cancelled">La ronda se canceló: los puntos que faltaron no se inspeccionaron. Si hace falta, lanzá otra ronda o una inspección puntual.</string>
+    <string name="summary_next_interrupted">La ronda se interrumpió, pero lo inspeccionado vale. Cuando se resuelva lo que la frenó, inspeccioná los puntos que faltaron.</string>
     <string name="summary_next_aborted">La ronda quedó sin cerrar porque se reinició el robot. Revisá qué puntos alcanzó a inspeccionar.</string>
     <string name="summary_time_range">%1$s – %2$s · %3$s</string>
     <string name="summary_in_progress">Desde %1$s · en curso</string>
@@ -287,6 +293,16 @@
     <string name="scenario_obstacle_detail">Pone un obstáculo antes del próximo checkpoint (E4).</string>
     <string name="scenario_high_temperature">Temperatura crítica</string>
     <string name="scenario_high_temperature_detail">La próxima medición supera el umbral crítico del punto (E5).</string>
+    <string name="scenario_water">Agua en el piso</string>
+    <string name="scenario_water_detail">Aparece agua sobre el camino, antes del próximo checkpoint.</string>
+    <string name="scenario_smoke">Humo o fuego</string>
+    <string name="scenario_smoke_detail">Aparece un foco de humo por delante; el robot corta la ronda y vuelve.</string>
+    <string name="scenario_humidity">Humedad fuera de rango</string>
+    <string name="scenario_humidity_detail">La próxima medición tiene la humedad alta.</string>
+    <string name="scenario_noise">Ruido anómalo</string>
+    <string name="scenario_noise_detail">La próxima medición tiene ruido de más.</string>
+    <string name="simulator_random">Situaciones aleatorias</string>
+    <string name="simulator_random_detail">Durante la ronda, cada 45 s a 2 min simulados pasa algo al azar: mediciones fuera de rango, obstáculos, agua, cortes de conexión, batería baja o humo.</string>
     <string name="scenario_reject">Rechazar la próxima orden</string>
     <string name="scenario_reject_detail">El robot responde la próxima orden como rechazada.</string>
     <string name="scenario_ignore">Ignorar la próxima orden</string>

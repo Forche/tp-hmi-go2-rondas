@@ -84,6 +84,11 @@ Variante (forma B): en vez de saltear, escribir `despejar` en la consola y elegi
   - El Historial y la "última ronda" son por sitio: con el Edificio B cargado aparecen vacíos, y al volver al de ejemplo reaparecen las rondas del Edificio A.
   - Un archivo inválido (por ejemplo, un checkpoint fuera del recorrido) se rechaza con el motivo, y el robot sigue con el sitio que tenía.
 
+- **Agua en el piso:** forma A, modo demo → *Agua en el piso*; forma B, consola → `agua` (aparece un charco en el pasillo). El robot frena antes y llega una alerta crítica con la foto del charco. *Quedarse vigilando* lo deja quieto; *Continuar* lo hace rodear el charco sin pisarlo y seguir la ronda.
+- **Humo o fuego:** forma A, modo demo → *Humo o fuego*; forma B, consola → `humo` (aparece un foco de fuego con humo al costado del pasillo). Alerta crítica con foto; el robot vuelve a la base sin acercarse. En el Historial la ronda queda *Interrumpida* y el resumen dice qué hacer.
+- **Humedad o ruido fuera de rango:** forma A, modo demo → *Humedad fuera de rango* o *Ruido anómalo*; forma B, consola → `humedad` o `ruido`. La próxima medición genera la alerta (de advertencia o crítica) y el checkpoint queda con anomalía.
+- **Situaciones aleatorias:** forma A, interruptor *Situaciones aleatorias* en el modo demo; forma B, consola → `aleatorio`. Durante la ronda, cada 45 s a 2 min simulados pasa algo al azar. Sirve para probar la app como en una noche real, sin saber qué viene.
+- **Volver a base o cancelar:** con una ronda en curso, *Volver a base* la deja *Interrumpida* en el Historial; *Cancelar misión* (pide confirmación) la deja *Cancelada*.
 - **Orden rechazada / sin respuesta (sólo forma A):** modo demo → *Rechazar la próxima orden* o *Ignorar la próxima orden*, y después mandar cualquier orden.
 - **Servidor apagado (forma B):** cerrar el servidor con Ctrl+C. La app muestra *Sin conexión* y reintenta cada 3 s; al volver a levantarlo se reconecta sola.
 - **Cada robot tiene su historial:** hacer una ronda con cada uno y cambiar de robot; el Historial y la "última ronda" del Panel muestran sólo las del robot elegido.

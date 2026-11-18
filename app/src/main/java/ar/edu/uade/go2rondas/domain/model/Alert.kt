@@ -26,7 +26,13 @@ enum class AlertCode {
     BATTERY_CRITICAL,
 
     /** Regla R5: la batería no alcanza para inspeccionar el subsuelo y volver; el robot no baja. */
-    BATTERY_INSUFFICIENT_FOR_BASEMENT
+    BATTERY_INSUFFICIENT_FOR_BASEMENT,
+
+    /** La cámara vio agua en el piso, sobre el camino: el robot frenó antes y espera una decisión. */
+    WATER_DETECTED,
+
+    /** El sensor detectó humo o fuego por delante: el robot cortó la ronda y vuelve sin acercarse. */
+    SMOKE_DETECTED
 }
 
 /** Opciones del operador cuando el robot espera una decisión. */

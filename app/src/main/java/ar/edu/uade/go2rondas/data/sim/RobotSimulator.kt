@@ -72,6 +72,13 @@ class RobotSimulator(
     private var obstacleArmed = false
     private var obstacleAt: Double? = null
     private var highTemperatureArmed = false
+    private var humidityArmed = false
+    private var noiseArmed = false
+    private var waterArmed = false
+    private var waterAt: Double? = null
+    private var waterBypassed = false
+    private var smokeArmed = false
+    private var smokeAt: Double? = null
     private var drainMultiplier = 1.0
     private var lowBatteryAlerted = false
     private var criticalBatteryAlerted = false
@@ -89,6 +96,8 @@ class RobotSimulator(
         var skipped = 0
         var elapsedSeconds = 0.0
         var cancelled = false
+        /** Volvió sin terminar: el operador, humo o sin enlace. */
+        var interrupted = false
         var lowBatteryDuringMission = false
         var lastCheckpointId: String? = null
         val current: Target? get() = targets.getOrNull(nextIndex)
@@ -128,6 +137,7 @@ class RobotSimulator(
         secondsWithoutLink += dt
         if (secondsWithoutLink >= MAX_SECONDS_WITHOUT_LINK && mission != null && state != RETURNING && state != AT_BASE) {
             resolveDecisions()
+            mission?.interrupted = true
             state = RETURNING
         }
     }
@@ -151,23 +161,45 @@ class RobotSimulator(
         val target = m.current ?: run { state = RETURNING; return }
         if (lacksBatteryForBasement(m, target)) return
 
-        if (obstacleArmed && obstacleAt == null) {
-            val gap = target.distance - distance
-            if (gap > 1.5) {
-                obstacleAt = distance + min(3.0, gap / 2)
-                obstacleArmed = false
+        placeArmedHazards(target)
+        // Humo o fuego por delante: no se acerca, corta la ronda y vuelve a la base.
+        smokeAt?.let { smoke ->
+            if (smoke - distance in 0.0..SMOKE_RANGE) {
+                raiseSmoke(m, target)
+                return
             }
         }
-        val obstacle = obstacleAt
-        val stopAt = if (obstacle != null) min(target.distance, obstacle - OBSTACLE_GAP) else target.distance
+        // Frena antes del agua en el piso (la ve la cámara) o de un obstáculo (lo ve el LiDAR).
+        val obstacleStop = obstacleAt?.let { it - OBSTACLE_GAP }?.takeIf { it < target.distance }
+        val waterStop = waterAt?.takeUnless { waterBypassed }?.let { it - WATER_GAP }?.takeIf { it < target.distance }
+        val stopAt = listOfNotNull(target.distance, obstacleStop, waterStop).min()
         moveTowards(stopAt, dt)
-        if (obstacle != null && distance >= stopAt - EPSILON && stopAt < target.distance) {
-            raiseObstacle(target)
-            return
+        if (distance < stopAt - EPSILON) return
+        when (stopAt) {
+            waterStop -> raiseWater(target)
+            obstacleStop -> raiseObstacle(target)
+            else -> {
+                speed = 0.0
+                inspectionRemaining = INSPECTION_SECONDS
+            }
         }
-        if (distance >= target.distance - EPSILON) {
-            speed = 0.0
-            inspectionRemaining = INSPECTION_SECONDS
+    }
+
+    /** Los escenarios del lugar aparecen por delante del robot, antes del próximo checkpoint. */
+    private fun placeArmedHazards(target: Target) {
+        val gap = target.distance - distance
+        if (obstacleArmed && obstacleAt == null && gap > 1.5) {
+            obstacleAt = distance + min(3.0, gap / 2)
+            obstacleArmed = false
+        }
+        if (waterArmed && waterAt == null && gap > 3.0) {
+            waterAt = distance + min(3.5, gap / 2)
+            waterBypassed = false
+            waterArmed = false
+        }
+        if (smokeArmed && smokeAt == null && gap > 2.0) {
+            smokeAt = distance + min(6.0, gap * 0.8)
+            smokeArmed = false
         }
     }
 
@@ -187,7 +219,7 @@ class RobotSimulator(
         distance = 0.0
         speed = 0.0
         inspectionRemaining = 0.0
-        obstacleAt = null
+        clearHazards()
         state = AT_BASE
         resolveDecisions()
         mission?.let { finish(it) }
@@ -199,7 +231,7 @@ class RobotSimulator(
             m.cancelled -> MissionResult.CANCELLED
             m.allDone -> MissionResult.COMPLETED
             m.lowBatteryDuringMission -> MissionResult.INTERRUPTED_LOW_BATTERY
-            else -> MissionResult.CANCELLED
+            else -> MissionResult.INTERRUPTED
         }
         emit(RobotEvent.MissionFinished(clock(), m.id, result, m.inspected, m.targets.size))
     }
@@ -279,11 +311,20 @@ class RobotSimulator(
             highTemperatureArmed = false
             (thresholds.temperature[checkpoint.zone]?.critical ?: 35.0) + 1.1
         } else null
+        // Humedad alta (falla del aire acondicionado) o ruido de más: de advertencia o críticos.
+        val humidity = if (humidityArmed) {
+            humidityArmed = false
+            thresholds.humidityHigh.warning + random.nextDouble(1.0, 14.0)
+        } else simulation.humidityPct + random.nextDouble(-4.0, 4.0)
+        val noise = if (noiseArmed) {
+            noiseArmed = false
+            noiseBaseline + thresholds.noiseAboveBaseline.warning + random.nextDouble(1.0, 15.0)
+        } else noiseBaseline + random.nextDouble(-1.5, 1.5)
         return EnvironmentReading(
             checkpointId = checkpoint.id,
             temperatureC = round1(forcedTemperature ?: (temperature + random.nextDouble(-0.6, 0.6))),
-            humidityPct = round1(simulation.humidityPct + random.nextDouble(-4.0, 4.0)),
-            noiseDba = round1(noiseBaseline + random.nextDouble(-1.5, 1.5)),
+            humidityPct = round1(humidity),
+            noiseDba = round1(noise),
             noiseBaselineDba = noiseBaseline
         )
     }
@@ -296,6 +337,28 @@ class RobotSimulator(
         lastReading = lastReading?.let { it.copy(temperatureC = round1(it.temperatureC + random.nextDouble(-0.3, 0.3))) }
         watchReadingsLeft--
         watchTimer = WATCH_INTERVAL_SECONDS
+    }
+
+    private fun raiseWater(target: Target) {
+        speed = 0.0
+        state = AWAITING_DECISION
+        raiseAlert(
+            severity = AlertSeverity.CRITICAL,
+            code = AlertCode.WATER_DETECTED,
+            checkpointId = target.checkpoint.id,
+            measured = null,
+            threshold = null,
+            options = listOf(IncidentDecision.CONTINUE, IncidentDecision.WATCH)
+        )
+    }
+
+    private fun raiseSmoke(m: SimMission, target: Target) {
+        speed = 0.0
+        resolveDecisions()
+        inspectionRemaining = 0.0
+        m.interrupted = true
+        state = RETURNING
+        raiseAlert(AlertSeverity.CRITICAL, AlertCode.SMOKE_DETECTED, target.checkpoint.id, null, null)
     }
 
     private fun raiseObstacle(target: Target) {
@@ -382,9 +445,13 @@ class RobotSimulator(
                 goBack()
             }
         }
+        // A diferencia de cancelar, la ronda queda interrumpida: lo inspeccionado vale.
         is Command.ReturnToBase -> when (state) {
             AT_BASE, RETURNING -> rejected(RejectionReason.INVALID_STATE)
-            else -> confirmed { goBack() }
+            else -> confirmed {
+                mission?.interrupted = true
+                goBack()
+            }
         }
         is Command.OperationalStop -> when (state) {
             AT_BASE, STOPPED -> rejected(RejectionReason.INVALID_STATE)
@@ -416,7 +483,7 @@ class RobotSimulator(
         return confirmed {
             val m = SimMission("m-${clock()}", command.mission, targets)
             mission = m
-            obstacleAt = null
+            clearHazards()
             inspectionRemaining = 0.0
             state = ON_MISSION
             emit(RobotEvent.MissionStarted(clock(), m.id, m.type, targets.size))
@@ -451,12 +518,17 @@ class RobotSimulator(
             }
             IncidentDecision.CONTINUE -> confirmed {
                 watchReadingsLeft = 0
+                // Sigue rodeando el agua, sin pisarla.
+                if (alert.code == AlertCode.WATER_DETECTED) waterBypassed = true
                 resolve(alert.id)
                 state = if (m.allDone) RETURNING else ON_MISSION
             }
+            // Se queda quieto mirando; si es una temperatura, además repite la medición.
             IncidentDecision.WATCH -> confirmed {
-                watchReadingsLeft = WATCH_READINGS
-                watchTimer = WATCH_INTERVAL_SECONDS
+                if (alert.code == AlertCode.TEMPERATURE_HIGH) {
+                    watchReadingsLeft = WATCH_READINGS
+                    watchTimer = WATCH_INTERVAL_SECONDS
+                }
             }
         }
     }
@@ -491,6 +563,10 @@ class RobotSimulator(
             }
             SimulationScenario.OBSTACLE -> obstacleArmed = true
             SimulationScenario.HIGH_TEMPERATURE -> highTemperatureArmed = true
+            SimulationScenario.HUMIDITY_ANOMALY -> humidityArmed = true
+            SimulationScenario.NOISE_ANOMALY -> noiseArmed = true
+            SimulationScenario.WATER_LEAK -> waterArmed = true
+            SimulationScenario.SMOKE -> smokeArmed = true
             // El corte de enlace, el rechazo y la falta de respuesta los simula la fuente de datos.
             SimulationScenario.CONNECTION_LOSS,
             SimulationScenario.REJECT_NEXT_COMMAND,
@@ -499,6 +575,16 @@ class RobotSimulator(
     }
 
     // ---------------------------------------------------------------- salida
+
+    fun missionId(): String? = mission?.id
+
+    /** Entre rondas el personal retira la caja, seca el agua y apaga el fuego. */
+    private fun clearHazards() {
+        obstacleAt = null
+        waterAt = null
+        waterBypassed = false
+        smokeAt = null
+    }
 
     fun drainEvents(): List<RobotEvent> = pendingEvents.toList().also { pendingEvents.clear() }
 
@@ -605,6 +691,8 @@ class RobotSimulator(
         const val SPEED_MPS = 0.5
         const val INSPECTION_SECONDS = 4.0
         const val OBSTACLE_GAP = 0.6
+        const val WATER_GAP = 1.3
+        const val SMOKE_RANGE = 4.5
         const val CHARGE_RATE = 0.25
         const val MOVING_DRAIN_PER_SECOND = 0.012
         const val IDLE_DRAIN_PER_SECOND = 0.004

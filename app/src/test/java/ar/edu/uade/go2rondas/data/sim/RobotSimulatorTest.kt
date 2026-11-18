@@ -147,4 +147,73 @@ class RobotSimulatorTest {
         assertEquals("CP3", mission.currentCheckpointId)
         assertEquals(3, mission.currentPosition)
     }
+
+    @Test
+    fun `water stops the robot and continue goes around it`() {
+        startFullRound()
+        simulator.trigger(SimulationScenario.WATER_LEAK)
+        runUntil { simulator.state == OperationalState.AWAITING_DECISION }
+
+        val alert = simulator.alerts().first()
+        assertEquals(AlertCode.WATER_DETECTED, alert.code)
+        assertEquals(AlertSeverity.CRITICAL, alert.severity)
+        assertEquals(listOf(IncidentDecision.CONTINUE, IncidentDecision.WATCH), alert.decisionOptions)
+        assertEquals(CommandOutcome.Confirmed, simulator.handle(Command.DecideIncident("c-2", alert.id, IncidentDecision.WATCH)))
+        assertEquals(OperationalState.AWAITING_DECISION, simulator.state)
+        assertEquals(CommandOutcome.Confirmed, simulator.handle(Command.DecideIncident("c-3", alert.id, IncidentDecision.CONTINUE)))
+        runUntil { simulator.state == OperationalState.AT_BASE }
+        assertEquals(MissionResult.COMPLETED, finished().result)
+    }
+
+    @Test
+    fun `smoke ends the round and sends the robot back`() {
+        startFullRound()
+        runUntil { inspected().size == 1 }
+        simulator.trigger(SimulationScenario.SMOKE)
+        runUntil { simulator.state == OperationalState.RETURNING }
+
+        val alert = simulator.alerts().first()
+        assertEquals(AlertCode.SMOKE_DETECTED, alert.code)
+        assertEquals(AlertSeverity.CRITICAL, alert.severity)
+        assertTrue(!alert.requiresDecision)
+        runUntil { simulator.state == OperationalState.AT_BASE }
+        assertEquals(MissionResult.INTERRUPTED, finished().result)
+    }
+
+    @Test
+    fun `return to base interrupts the round and cancel cancels it`() {
+        startFullRound()
+        runUntil { inspected().size == 1 }
+        assertEquals(CommandOutcome.Confirmed, simulator.handle(Command.ReturnToBase("c-2")))
+        runUntil { simulator.state == OperationalState.AT_BASE }
+        assertEquals(MissionResult.INTERRUPTED, finished().result)
+
+        events.clear()
+        startFullRound()
+        runUntil { inspected().size == 1 }
+        assertEquals(CommandOutcome.Confirmed, simulator.handle(Command.Cancel("c-3")))
+        runUntil { simulator.state == OperationalState.AT_BASE }
+        assertEquals(MissionResult.CANCELLED, finished().result)
+    }
+
+    @Test
+    fun `humidity and noise out of range raise alerts`() {
+        startFullRound()
+        simulator.trigger(SimulationScenario.HUMIDITY_ANOMALY)
+        simulator.trigger(SimulationScenario.NOISE_ANOMALY)
+        runUntil { inspected().size == 1 }
+
+        assertEquals(CheckpointStatus.ANOMALY, inspected().first().status)
+        val codes = simulator.alerts().map { it.code }.toSet()
+        assertTrue(codes.containsAll(setOf(AlertCode.HUMIDITY_OUT_OF_RANGE, AlertCode.NOISE_HIGH)))
+    }
+
+    @Test
+    fun `random situations happen during the round and the ones that end it only once`() {
+        val situations = RandomSituations(Random(3))
+        val happened = (1..2_000).mapNotNull { situations.tick(10.0, "m-1") }
+        assertTrue(happened.size > 100)
+        assertTrue(happened.count { it == SimulationScenario.LOW_BATTERY } <= 1)
+        assertTrue(happened.count { it == SimulationScenario.SMOKE } <= 1)
+    }
 }

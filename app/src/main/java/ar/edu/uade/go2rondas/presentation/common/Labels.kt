@@ -102,6 +102,8 @@ fun AlertCode.titleRes(): Int = when (this) {
     AlertCode.BATTERY_LOW -> R.string.alert_battery_low
     AlertCode.BATTERY_CRITICAL -> R.string.alert_battery_critical
     AlertCode.BATTERY_INSUFFICIENT_FOR_BASEMENT -> R.string.alert_battery_basement
+    AlertCode.WATER_DETECTED -> R.string.alert_water
+    AlertCode.SMOKE_DETECTED -> R.string.alert_smoke
 }
 
 @StringRes
@@ -128,7 +130,8 @@ fun MissionType.detailRes(): Int = when (this) {
 @StringRes
 fun MissionResult?.labelRes(): Int = when (this) {
     MissionResult.COMPLETED -> R.string.result_completed
-    MissionResult.INTERRUPTED_LOW_BATTERY -> R.string.result_interrupted
+    MissionResult.INTERRUPTED_LOW_BATTERY -> R.string.result_interrupted_battery
+    MissionResult.INTERRUPTED -> R.string.result_interrupted
     MissionResult.CANCELLED -> R.string.result_cancelled
     MissionResult.ABORTED -> R.string.result_aborted
     null -> R.string.result_in_progress
