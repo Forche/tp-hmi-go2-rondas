@@ -11,6 +11,10 @@ interface SimulationRepository {
     suspend fun setTimeScale(scale: Int)
     suspend fun trigger(scenario: SimulationScenario)
 
+    /** Con las situaciones aleatorias activas, el simulador provoca escenarios al azar durante la ronda. */
+    fun observeRandomSituations(): Flow<Boolean>
+    suspend fun setRandomSituations(enabled: Boolean)
+
     /** Le carga al robot simulado el archivo de sitio indicado (uri de un documento elegido por el operador). */
     suspend fun loadSite(documentUri: String): SiteLoadResult
 

@@ -7,11 +7,13 @@ import ar.edu.uade.go2rondas.domain.model.RobotSnapshot
 import ar.edu.uade.go2rondas.domain.model.SimulationScenario
 import ar.edu.uade.go2rondas.domain.model.SiteLoadResult
 import ar.edu.uade.go2rondas.domain.usecase.LoadSimulatorSiteUseCase
+import ar.edu.uade.go2rondas.domain.usecase.ObserveRandomSituationsUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveRobotSnapshotUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveSimulationAvailableUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveSimulationTimeScaleUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveSiteConfigUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ResetSimulatorSiteUseCase
+import ar.edu.uade.go2rondas.domain.usecase.SetRandomSituationsUseCase
 import ar.edu.uade.go2rondas.domain.usecase.SetSimulationTimeScaleUseCase
 import ar.edu.uade.go2rondas.domain.usecase.TriggerSimulationScenarioUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,7 +33,8 @@ data class SimulatorData(
     val snapshot: RobotSnapshot,
     val available: Boolean,
     val timeScale: Int,
-    val siteName: String
+    val siteName: String,
+    val randomSituations: Boolean
 )
 
 sealed interface SimulatorUiEffect {
@@ -48,7 +51,9 @@ class SimulatorViewModel @Inject constructor(
     private val triggerScenario: TriggerSimulationScenarioUseCase,
     observeSiteConfig: ObserveSiteConfigUseCase,
     private val loadSite: LoadSimulatorSiteUseCase,
-    private val resetSite: ResetSimulatorSiteUseCase
+    private val resetSite: ResetSimulatorSiteUseCase,
+    observeRandomSituations: ObserveRandomSituationsUseCase,
+    private val setRandomSituations: SetRandomSituationsUseCase
 ) : ViewModel() {
 
     val uiState: StateFlow<UiState<SimulatorData>> =
@@ -56,9 +61,10 @@ class SimulatorViewModel @Inject constructor(
             observeRobotSnapshot(),
             observeSimulationAvailable(),
             observeTimeScale(),
-            observeSiteConfig()
-        ) { snapshot, available, scale, site ->
-            SimulatorData(snapshot, available, scale, site.name)
+            observeSiteConfig(),
+            observeRandomSituations()
+        ) { snapshot, available, scale, site, random ->
+            SimulatorData(snapshot, available, scale, site.name, random)
         }
             .map<SimulatorData, UiState<SimulatorData>> { UiState.Success(it) }
             .catch { emit(UiState.Error(it.message ?: "Error")) }
@@ -78,6 +84,10 @@ class SimulatorViewModel @Inject constructor(
 
     fun onResetSite() {
         viewModelScope.launch { _effects.emit(SimulatorUiEffect.SiteLoaded(resetSite())) }
+    }
+
+    fun onRandomSituationsChanged(enabled: Boolean) {
+        viewModelScope.launch { setRandomSituations(enabled) }
     }
 
     fun onTrigger(scenario: SimulationScenario) {

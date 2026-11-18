@@ -22,6 +22,14 @@ class TriggerSimulationScenarioUseCase @Inject constructor(private val repositor
     suspend operator fun invoke(scenario: SimulationScenario) = repository.trigger(scenario)
 }
 
+class ObserveRandomSituationsUseCase @Inject constructor(private val repository: SimulationRepository) {
+    operator fun invoke(): Flow<Boolean> = repository.observeRandomSituations()
+}
+
+class SetRandomSituationsUseCase @Inject constructor(private val repository: SimulationRepository) {
+    suspend operator fun invoke(enabled: Boolean) = repository.setRandomSituations(enabled)
+}
+
 class LoadSimulatorSiteUseCase @Inject constructor(private val repository: SimulationRepository) {
     suspend operator fun invoke(documentUri: String): SiteLoadResult = repository.loadSite(documentUri)
 }

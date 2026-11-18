@@ -120,6 +120,8 @@ fun alertDetailText(context: Context, alert: Alert, checkpointLabel: String?): S
         AlertCode.NOISE_HIGH -> context.getString(R.string.alert_detail_noise, place, value, threshold)
         AlertCode.BATTERY_LOW, AlertCode.BATTERY_CRITICAL -> context.getString(R.string.alert_detail_battery, value, threshold)
         AlertCode.BATTERY_INSUFFICIENT_FOR_BASEMENT -> context.getString(R.string.alert_detail_battery_basement, value, threshold)
+        AlertCode.WATER_DETECTED -> context.getString(R.string.alert_detail_water, place)
+        AlertCode.SMOKE_DETECTED -> context.getString(R.string.alert_detail_smoke, place)
     }
 }
 
@@ -231,7 +233,7 @@ fun MissionResult?.pillColors(): Pair<Color, Color> {
     val status = MaterialTheme.statusColors
     return when (this) {
         MissionResult.COMPLETED -> status.okContainer to status.ok
-        MissionResult.INTERRUPTED_LOW_BATTERY -> status.warningContainer to status.warning
+        MissionResult.INTERRUPTED_LOW_BATTERY, MissionResult.INTERRUPTED -> status.warningContainer to status.warning
         MissionResult.CANCELLED, MissionResult.ABORTED -> status.staleContainer to status.stale
         null -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.primary
     }

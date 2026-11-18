@@ -31,6 +31,10 @@ class SimulationRepositoryImpl @Inject constructor(
 
     override suspend fun trigger(scenario: SimulationScenario) = simulator.trigger(scenario)
 
+    override fun observeRandomSituations(): Flow<Boolean> = simulator.randomSituations
+
+    override suspend fun setRandomSituations(enabled: Boolean) = simulator.setRandomSituations(enabled)
+
     override suspend fun loadSite(documentUri: String): SiteLoadResult = withContext(Dispatchers.IO) {
         simulator.loadSite { siteStore.importSimulatorSite(SimulatedRobotDataSource.ROBOT_ID, Uri.parse(documentUri)) }
     }

@@ -26,6 +26,7 @@ fun MissionRecord.nextStepRes(): Int? = when (result) {
     }
     MissionResult.INTERRUPTED_LOW_BATTERY -> R.string.summary_next_battery
     MissionResult.CANCELLED -> R.string.summary_next_cancelled
+    MissionResult.INTERRUPTED -> R.string.summary_next_interrupted
     MissionResult.ABORTED -> R.string.summary_next_aborted
 }
 

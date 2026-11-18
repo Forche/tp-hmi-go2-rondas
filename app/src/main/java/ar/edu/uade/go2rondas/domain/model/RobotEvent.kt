@@ -45,6 +45,8 @@ enum class MissionResult {
     COMPLETED,
     INTERRUPTED_LOW_BATTERY,
     CANCELLED,
+    /** Volvió sin terminar: lo pidió el operador, detectó humo o estuvo 5 min sin enlace. Vale lo inspeccionado. */
+    INTERRUPTED,
     /** La ronda nunca recibió su fin (por ejemplo, se reinició el simulador). */
     ABORTED
 }

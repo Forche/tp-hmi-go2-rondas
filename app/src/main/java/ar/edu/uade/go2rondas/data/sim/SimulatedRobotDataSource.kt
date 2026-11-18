@@ -58,6 +58,8 @@ class SimulatedRobotDataSource @Inject constructor(
     private val _alerts = MutableStateFlow<List<Alert>>(emptyList())
     private val _events = MutableSharedFlow<RobotEvent>(extraBufferCapacity = 64)
     private val _timeScale = MutableStateFlow(DEFAULT_TIME_SCALE)
+    private val _randomSituations = MutableStateFlow(false)
+    private val situations = RandomSituations()
 
     private val queuedEvents = mutableListOf<RobotEvent>()
     private val handledCommandIds = mutableSetOf<String>()
@@ -69,6 +71,7 @@ class SimulatedRobotDataSource @Inject constructor(
     override val alerts: Flow<List<Alert>> = _alerts.asStateFlow()
     override val events: Flow<RobotEvent> = _events.asSharedFlow()
     val timeScale: StateFlow<Int> = _timeScale.asStateFlow()
+    val randomSituations: StateFlow<Boolean> = _randomSituations.asStateFlow()
     override val site: StateFlow<SiteConfig> = _site.map { it.config }
         .stateIn(scope, SharingStarted.Eagerly, _site.value.config)
 
@@ -79,8 +82,10 @@ class SimulatedRobotDataSource @Inject constructor(
             while (isActive) {
                 delay(TICK_MILLIS)
                 mutex.withLock {
+                    val dt = TICK_MILLIS / 1000.0 * _timeScale.value
                     engine.setLinkAvailable(isLinkUp())
-                    engine.tick(TICK_MILLIS / 1000.0 * _timeScale.value)
+                    engine.tick(dt)
+                    randomTick(dt)
                 }
                 publish()
             }
@@ -109,13 +114,26 @@ class SimulatedRobotDataSource @Inject constructor(
         return outcome
     }
 
-    suspend fun trigger(scenario: SimulationScenario) = mutex.withLock {
+    suspend fun trigger(scenario: SimulationScenario) = mutex.withLock { apply(scenario, LINK_DOWN_MILLIS) }
+
+    fun setRandomSituations(enabled: Boolean) {
+        _randomSituations.value = enabled
+    }
+
+    private fun apply(scenario: SimulationScenario, linkDownMillis: Long) {
         when (scenario) {
-            SimulationScenario.CONNECTION_LOSS -> linkDownUntil = System.currentTimeMillis() + LINK_DOWN_MILLIS
+            SimulationScenario.CONNECTION_LOSS -> linkDownUntil = System.currentTimeMillis() + linkDownMillis
             SimulationScenario.REJECT_NEXT_COMMAND,
             SimulationScenario.IGNORE_NEXT_COMMAND -> forcedNextCommand = scenario
             else -> engine.trigger(scenario)
         }
+    }
+
+    /** Con las situaciones aleatorias activas, cada tanto provoca un escenario durante la ronda. */
+    private fun randomTick(dt: Double) {
+        if (!_randomSituations.value || engine.state != OperationalState.ON_MISSION) return
+        val missionId = engine.missionId() ?: return
+        situations.tick(dt, missionId)?.let { apply(it, RANDOM_LINK_DOWN_MILLIS) }
     }
 
     /**
@@ -171,5 +189,6 @@ class SimulatedRobotDataSource @Inject constructor(
         private const val MIN_LATENCY_MILLIS = 300L
         private const val MAX_LATENCY_MILLIS = 800L
         private const val LINK_DOWN_MILLIS = 60_000L
+        private const val RANDOM_LINK_DOWN_MILLIS = 20_000L
     }
 }

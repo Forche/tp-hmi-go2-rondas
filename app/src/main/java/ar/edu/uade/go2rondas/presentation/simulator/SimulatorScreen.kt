@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -46,6 +47,10 @@ private fun SimulationScenario.titleRes(): Int = when (this) {
     SimulationScenario.CONNECTION_LOSS -> R.string.scenario_connection_loss
     SimulationScenario.OBSTACLE -> R.string.scenario_obstacle
     SimulationScenario.HIGH_TEMPERATURE -> R.string.scenario_high_temperature
+    SimulationScenario.WATER_LEAK -> R.string.scenario_water
+    SimulationScenario.SMOKE -> R.string.scenario_smoke
+    SimulationScenario.HUMIDITY_ANOMALY -> R.string.scenario_humidity
+    SimulationScenario.NOISE_ANOMALY -> R.string.scenario_noise
     SimulationScenario.REJECT_NEXT_COMMAND -> R.string.scenario_reject
     SimulationScenario.IGNORE_NEXT_COMMAND -> R.string.scenario_ignore
 }
@@ -56,6 +61,10 @@ private fun SimulationScenario.detailRes(): Int = when (this) {
     SimulationScenario.CONNECTION_LOSS -> R.string.scenario_connection_loss_detail
     SimulationScenario.OBSTACLE -> R.string.scenario_obstacle_detail
     SimulationScenario.HIGH_TEMPERATURE -> R.string.scenario_high_temperature_detail
+    SimulationScenario.WATER_LEAK -> R.string.scenario_water_detail
+    SimulationScenario.SMOKE -> R.string.scenario_smoke_detail
+    SimulationScenario.HUMIDITY_ANOMALY -> R.string.scenario_humidity_detail
+    SimulationScenario.NOISE_ANOMALY -> R.string.scenario_noise_detail
     SimulationScenario.REJECT_NEXT_COMMAND -> R.string.scenario_reject_detail
     SimulationScenario.IGNORE_NEXT_COMMAND -> R.string.scenario_ignore_detail
 }
@@ -105,6 +114,7 @@ fun SimulatorScreen(onBack: () -> Unit, viewModel: SimulatorViewModel = hiltView
                 data = current.data,
                 onTimeScaleSelected = viewModel::onTimeScaleSelected,
                 onTrigger = viewModel::onTrigger,
+                onRandomChanged = viewModel::onRandomSituationsChanged,
                 onLoadSite = { pickSiteFile.launch(SITE_FILE_TYPES) },
                 onResetSite = viewModel::onResetSite
             )
@@ -117,6 +127,7 @@ private fun SimulatorBody(
     data: SimulatorData,
     onTimeScaleSelected: (Int) -> Unit,
     onTrigger: (SimulationScenario) -> Unit,
+    onRandomChanged: (Boolean) -> Unit,
     onLoadSite: () -> Unit,
     onResetSite: () -> Unit
 ) {
@@ -144,6 +155,7 @@ private fun SimulatorBody(
         }
         SiteCard(data.siteName, onLoadSite, onResetSite)
         Label(stringResource(R.string.simulator_scenarios))
+        RandomCard(data.randomSituations, onRandomChanged)
         SimulationScenario.entries.forEach { scenario ->
             ScenarioCard(scenario, onTrigger = { onTrigger(scenario) })
         }
@@ -178,6 +190,32 @@ private fun SiteCard(siteName: String, onLoadSite: () -> Unit, onResetSite: () -
             OutlinedButton(onClick = onLoadSite) { Text(stringResource(R.string.site_load)) }
             TextButton(onClick = onResetSite) { Text(stringResource(R.string.site_reset)) }
         }
+    }
+}
+
+/** Modo aleatorio: el simulador provoca escenarios al azar durante la ronda. */
+@Composable
+private fun RandomCard(enabled: Boolean, onChanged: (Boolean) -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(stringResource(R.string.simulator_random), style = MaterialTheme.typography.labelLarge)
+            Text(
+                stringResource(R.string.simulator_random_detail),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(checked = enabled, onCheckedChange = onChanged)
     }
 }
 
