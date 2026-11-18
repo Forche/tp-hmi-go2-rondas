@@ -201,6 +201,20 @@ class RobotSimulatorTest {
     }
 
     @Test
+    fun `what was asked and did not show up does not carry over to the next round`() {
+        startFullRound()
+        runUntil { inspected().size == 1 }
+        simulator.handle(Command.ReturnToBase("c-2"))
+        simulator.trigger(SimulationScenario.SMOKE)  // vuelve hacia atrás: el humo no llega a aparecer
+        runUntil { simulator.state == OperationalState.AT_BASE }
+
+        events.clear()
+        assertEquals(CommandOutcome.Confirmed, simulator.handle(Command.StartMission("c-3", MissionType.FULL_ROUND)))
+        runUntil { inspected().size == 2 }
+        assertTrue(simulator.alerts().none { it.code == AlertCode.SMOKE_DETECTED })
+    }
+
+    @Test
     fun `return to base interrupts the round and cancel cancels it`() {
         startFullRound()
         runUntil { inspected().size == 1 }

@@ -73,8 +73,10 @@ class SimulatedRobot(RobotInterface):
 
     def dock(self):
         # Entre rondas el personal retira lo que haya quedado en el pasillo, seca el agua y apaga el fuego.
+        # Lo que se pidió y no llegó a aparecer en esta ronda también se descarta: no pasa a la siguiente.
         self.body.reset_at_base()
         self.water_at = self.smoke_at = None
+        self.armed.clear()
         self._show("charco", None)
         self._show("fuego", None)
         self.docked = True

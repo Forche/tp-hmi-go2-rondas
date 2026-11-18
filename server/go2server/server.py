@@ -233,7 +233,9 @@ class Go2Server:
                 self.apply(command, args)
                 continue
             if self.apply(command, args):
-                pass
+                if command in SCENARIOS and command not in ("bateria", "despejar") and self.mission_control.state == "AT_BASE":
+                    print("Listo: el robot está en la base, va a aparecer en la próxima ronda")
+                    continue
             elif command == "velocidad" and args:
                 self.speed = max(1, min(10, int(args[0])))
             elif command == "estado":

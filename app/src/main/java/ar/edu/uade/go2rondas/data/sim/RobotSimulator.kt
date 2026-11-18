@@ -542,8 +542,18 @@ class RobotSimulator(
 
     fun missionId(): String? = mission?.id
 
-    /** Entre rondas el personal retira la caja, seca el agua y apaga el fuego. */
+    /**
+     * Entre rondas el personal retira la caja, seca el agua y apaga el fuego. Lo que se pidió y no llegó
+     * a aparecer en esta ronda también se descarta: no pasa a la siguiente.
+     */
     private fun clearHazards() {
+        obstacleArmed = false
+        pathObstacleArmed = false
+        waterArmed = false
+        smokeArmed = false
+        highTemperatureArmed = false
+        humidityArmed = false
+        noiseArmed = false
         obstacleAt = null
         pathObstacleAt = null
         waterAt = null

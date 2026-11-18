@@ -97,6 +97,19 @@ class SimulatedRobotTest(unittest.TestCase):
         self.assertGreater(closest, 0.6)  # pasó por el costado del charco
         self.assertLess(self.tilt_deg(), 15)
 
+    def test_what_was_asked_and_did_not_show_up_is_dropped_when_the_round_ends(self):
+        # El humo pedido mientras el robot vuelve no aparece (va hacia atrás) y no tiene que cortar la ronda siguiente.
+        self.make()
+        self.mission_control.handle("START_MISSION", {"mission": "FULL_ROUND"})
+        self.run_until(lambda: self.mission_control.mission.inspected == 1)
+        self.mission_control.handle("RETURN_TO_BASE", {})
+        self.robot.trigger("SMOKE")
+        self.run_until(lambda: self.mission_control.state == "AT_BASE")
+        self.assertEqual(set(), self.robot.armed)
+        self.mission_control.handle("START_MISSION", {"mission": "FULL_ROUND"})
+        self.run_until(lambda: self.mission_control.mission.inspected == 1)
+        self.assertFalse(any(a["code"] == "SMOKE_DETECTED" for a in self.mission_control.alerts))
+
     def test_the_front_camera_takes_a_jpeg(self):
         from PIL import Image
         self.make()
