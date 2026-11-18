@@ -96,6 +96,7 @@ fun AlertSeverity.labelRes(): Int = when (this) {
 @StringRes
 fun AlertCode.titleRes(): Int = when (this) {
     AlertCode.OBSTACLE -> R.string.alert_obstacle
+    AlertCode.OBSTACLE_AVOIDED -> R.string.alert_obstacle_avoided
     AlertCode.TEMPERATURE_HIGH -> R.string.alert_temperature_high
     AlertCode.HUMIDITY_OUT_OF_RANGE -> R.string.alert_humidity
     AlertCode.NOISE_HIGH -> R.string.alert_noise

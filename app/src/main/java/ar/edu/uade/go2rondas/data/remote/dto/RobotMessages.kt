@@ -127,6 +127,14 @@ data class PhotoMessageDto(
     @SerialName("jpeg_base64") val jpegBase64: String
 ) : ServerMessage
 
+/** Cámara en vivo: una imagen JPEG de la cámara frontal, mientras la app la pida. No se guarda. */
+@Serializable
+@SerialName("camera_frame")
+data class CameraFrameDto(
+    val timestamp: Long,
+    @SerialName("jpeg_base64") val jpegBase64: String
+) : ServerMessage
+
 @Serializable
 @SerialName("command_response")
 data class CommandResponseDto(
@@ -136,6 +144,11 @@ data class CommandResponseDto(
 ) : ServerMessage
 
 /** Lo que envía la app. */
+
+/** Pide (o corta) la cámara en vivo. */
+@Serializable
+data class CameraRequestDto(val type: String = "camera", val enabled: Boolean)
+
 @Serializable
 data class CommandDto(
     val type: String = "command",

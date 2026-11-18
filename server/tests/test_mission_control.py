@@ -87,17 +87,33 @@ class MissionControlTest(unittest.TestCase):
     def decide(self, alert, decision):
         return self.mission_control.handle("INCIDENT_DECISION", {"alert_id": alert["id"], "decision": decision})
 
-    def test_water_stops_the_robot_and_continue_goes_around_it(self):
+    def test_a_box_on_the_way_is_avoided_without_asking_and_the_round_goes_on(self):
+        self.start_full_round()
+        self.robot.trigger("OBSTACLE_PATH")
+        self.run_until(lambda: any(a["code"] == "OBSTACLE_AVOIDED" for a in self.mission_control.alerts))
+        alert = self.mission_control.alerts[0]
+        self.assertEqual(("WARNING", False), (alert["severity"], alert["requires_decision"]))
+        self.assertNotEqual("AWAITING_DECISION", self.mission_control.state)
+        self.run_until(lambda: self.mission_control.state == "AT_BASE")
+        self.assertEqual("COMPLETED", self.finished()["result"])
+        self.assertFalse(any(r["status"] == "SKIPPED" for r in self.results()))
+
+    def test_water_is_reported_and_the_robot_goes_around_it_without_asking(self):
         self.start_full_round()
         self.robot.trigger("WATER")
-        self.run_until(lambda: self.mission_control.state == "AWAITING_DECISION")
+        self.run_until(lambda: any(a["code"] == "WATER_DETECTED" for a in self.mission_control.alerts))
         alert = self.mission_control.alerts[0]
-        self.assertEqual(("WATER_DETECTED", "CRITICAL", ["CONTINUE", "WATCH"]),
-                         (alert["code"], alert["severity"], alert["options"]))
-        self.assertGreater(self.robot.water_at - self.mission_control.distance, 1.0)  # frenó antes de pisarla
-        self.assertEqual((True, None), self.decide(alert, "WATCH"))
-        self.assertEqual("AWAITING_DECISION", self.mission_control.state)
-        self.assertEqual((True, None), self.decide(alert, "CONTINUE"))
+        self.assertEqual(("CRITICAL", False), (alert["severity"], alert["requires_decision"]))
+        self.assertNotEqual("AWAITING_DECISION", self.mission_control.state)
+        self.run_until(lambda: self.mission_control.state == "AT_BASE")
+        self.assertEqual("COMPLETED", self.finished()["result"])
+
+    def test_a_reading_out_of_range_is_reported_and_the_round_goes_on(self):
+        self.start_full_round()
+        self.robot.trigger("HIGH_TEMPERATURE")
+        self.run_until(lambda: any(a["code"] == "TEMPERATURE_HIGH" for a in self.mission_control.alerts))
+        alert = self.mission_control.alerts[0]
+        self.assertEqual(("CRITICAL", False), (alert["severity"], alert["requires_decision"]))
         self.run_until(lambda: self.mission_control.state == "AT_BASE")
         self.assertEqual("COMPLETED", self.finished()["result"])
 

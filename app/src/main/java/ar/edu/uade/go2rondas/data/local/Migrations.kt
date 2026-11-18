@@ -14,4 +14,11 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+/** Versión 3: cada alerta guardada en el historial recuerda su foto, para verla después. */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE events ADD COLUMN photoId TEXT")
+    }
+}
+
 private const val SITE_BEFORE_V2 = "dc-edificio-a"

@@ -60,9 +60,11 @@ cd mujoco_menagerie && git sparse-checkout set unitree_go2
 | `--port N` | Puerto del WebSocket (por defecto 8765) |
 | `--no-console` | Sin comandos por consola, para correrlo en segundo plano |
 
-En la consola se pueden provocar los escenarios: `obstaculo` (una caja en el pasillo, antes del próximo checkpoint), `despejar` (saca la caja), `agua` (un charco sobre el camino), `humo` (un foco de fuego con humo al costado del camino), `temperatura`, `humedad`, `ruido` (la próxima medición sale de rango), `bateria`, `corte [s]`, `aleatorio` (activa o desactiva las situaciones al azar durante la ronda, `sim_random.py`), `velocidad N`, `estado`.
+En la consola se pueden provocar los escenarios: `obstaculo` (una caja sobre el próximo checkpoint: tapa el punto y el robot pide una decisión, E4), `caja` (una caja en el camino: el robot la rodea solo y avisa), `despejar` (saca la caja), `agua` (un charco sobre el camino), `humo` (un foco de fuego con humo al costado del camino), `temperatura`, `humedad`, `ruido` (la próxima medición sale de rango), `bateria`, `corte [s]`, `aleatorio` (activa o desactiva las situaciones al azar durante la ronda, `sim_random.py`), `velocidad N`, `estado`.
 
 Con la caja en el pasillo, *Reintentar* desde la app vuelve rechazada porque el LiDAR la sigue viendo; después de `despejar`, *Reintentar* se acepta y el robot sigue. Con *Saltear*, el robot rodea la caja por un costado. Al volver a la base la caja, el agua y el fuego se retiran.
+
+**Criterio:** si el robot puede resolver el problema solo, saca una foto, avisa y sigue: la caja en el camino y el charco los rodea, una medición fuera de rango la informa y ante humo vuelve a la base. Sólo pide una decisión cuando no puede medir: una caja sobre el checkpoint (E4).
 
 El charco no lo ve el LiDAR (es plano): lo ve la cámara a 3,5 m. El humo lo detecta el módulo de sensores a 4,5 m. Las dos detecciones se simulan sabiendo dónde está cada cosa; un robot real las haría por imagen y con un sensor de humo.
 
@@ -93,7 +95,9 @@ Contrato propio del TP, no el protocolo oficial de Unitree.
 | servidor → app | `telemetry` | Una vez por segundo: batería, estado, misión, ubicación, movimiento, enlace y última lectura ambiental |
 | servidor → app | `alerts` | La lista de alertas de la sesión, cada vez que cambia |
 | servidor → app | `event` | `MISSION_STARTED`, `CHECKPOINT_RESULT` (con `photo_id`), `ALERT`, `MISSION_FINISHED` |
-| servidor → app | `photo` | `photo_id`, `timestamp` y `jpeg_base64`: la foto de la cámara frontal (320 × 240). La de un checkpoint se llama `<ronda>_<checkpoint>`; la de un obstáculo, `<ronda>_<checkpoint>_obstaculo`, y la alerta la nombra en `photo_id` |
+| servidor → app | `photo` | `photo_id`, `timestamp` y `jpeg_base64`: una foto de la cámara frontal (320 × 240) que la app guarda. La de un checkpoint se llama `<ronda>_<checkpoint>`; la de un incidente (obstáculo, agua, humo) la nombra la alerta en `photo_id` |
+| app → servidor | `camera` | `enabled`: pide o corta la cámara en vivo |
+| servidor → app | `camera_frame` | `timestamp` y `jpeg_base64`: cámara en vivo, unas 4 imágenes por segundo mientras la app la pida. No se guarda |
 
 Con el enlace cortado (`corte`), el servidor no envía nada y descarta las órdenes. Los eventos se guardan y se mandan al volver la conexión.
 

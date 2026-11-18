@@ -8,6 +8,8 @@ import ar.edu.uade.go2rondas.data.mapper.toDto
 import ar.edu.uade.go2rondas.data.mapper.toOutcome
 import ar.edu.uade.go2rondas.data.photo.PhotoStore
 import ar.edu.uade.go2rondas.data.remote.dto.AlertsDto
+import ar.edu.uade.go2rondas.data.remote.dto.CameraFrameDto
+import ar.edu.uade.go2rondas.data.remote.dto.CameraRequestDto
 import ar.edu.uade.go2rondas.data.remote.dto.CommandDto
 import ar.edu.uade.go2rondas.data.remote.dto.CommandResponseDto
 import ar.edu.uade.go2rondas.data.remote.dto.EventDto
@@ -22,6 +24,7 @@ import ar.edu.uade.go2rondas.data.source.RobotDataSource
 import ar.edu.uade.go2rondas.domain.model.Alert
 import ar.edu.uade.go2rondas.domain.model.Command
 import ar.edu.uade.go2rondas.domain.model.CommandOutcome
+import ar.edu.uade.go2rondas.domain.model.LiveCameraState
 import ar.edu.uade.go2rondas.domain.model.RobotEvent
 import ar.edu.uade.go2rondas.domain.model.SiteConfig
 import ar.edu.uade.go2rondas.domain.model.Telemetry
@@ -38,6 +41,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -46,6 +51,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -70,6 +76,9 @@ class MujocoRobotDataSource @Inject constructor(
     private val _alerts = MutableStateFlow<List<Alert>>(emptyList())
     private val _events = MutableSharedFlow<RobotEvent>(extraBufferCapacity = 64)
     // Hasta que el robot mande su mapa: la última copia recibida o, la primera vez, el sitio de ejemplo.
+    // Cámara en vivo: la última imagen, mientras haya alguien mirando.
+    private val _cameraFrame = MutableStateFlow<LiveCameraState.Frame?>(null)
+    private val cameraViewers = AtomicInteger(0)
     private val _site = MutableStateFlow((siteStore.loadReceivedSite(ROBOT_ID) ?: siteStore.defaultSite()).config)
 
     /** Órdenes enviadas que esperan su command_response, por id. */
@@ -151,6 +160,7 @@ class MujocoRobotDataSource @Inject constructor(
             is CommandResponseDto -> pending[message.commandId]?.complete(message.toOutcome())
             is SiteMessageDto -> onSiteReceived(message)
             is PhotoMessageDto -> onPhotoReceived(message)
+            is CameraFrameDto -> onCameraFrame(message)
         }
     }
 
@@ -162,6 +172,34 @@ class MujocoRobotDataSource @Inject constructor(
         } catch (e: InvalidSiteException) {
             Log.w(TAG, "El robot mandó un mapa inválido: ${e.message}")
         }
+    }
+
+    /**
+     * Cámara en vivo: mientras se observa, el servidor manda unas imágenes por segundo. Al dejar de
+     * observarla (se cierra la pantalla) se le pide que pare. Si el socket se reconecta, se vuelve a pedir.
+     */
+    fun liveCamera(): Flow<LiveCameraState.Frame?> = _cameraFrame
+        .onStart { if (cameraViewers.incrementAndGet() == 1) requestCamera(true) }
+        .onCompletion {
+            if (cameraViewers.decrementAndGet() == 0) {
+                requestCamera(false)
+                _cameraFrame.value = null
+            }
+        }
+
+    private fun requestCamera(enabled: Boolean) {
+        val ws = synchronized(lock) { socket.takeIf { isOpen } } ?: return
+        ws.send(RobotJson.encodeToString(CameraRequestDto.serializer(), CameraRequestDto(enabled = enabled)))
+    }
+
+    private fun onCameraFrame(message: CameraFrameDto) {
+        if (cameraViewers.get() == 0) return
+        val jpeg = try {
+            Base64.getDecoder().decode(message.jpegBase64)
+        } catch (e: IllegalArgumentException) {
+            return
+        }
+        _cameraFrame.value = LiveCameraState.Frame(jpeg, message.timestamp)
     }
 
     /** Foto de la cámara del robot: se guarda para mostrarla en la alerta y en el historial. */
@@ -191,6 +229,7 @@ class MujocoRobotDataSource @Inject constructor(
     private inner class Listener : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
             synchronized(lock) { if (webSocket === socket) isOpen = true }
+            if (cameraViewers.get() > 0) requestCamera(true)
             Log.i(TAG, "Conectado a $address")
         }
 

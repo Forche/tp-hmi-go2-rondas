@@ -39,6 +39,14 @@ import ar.edu.uade.go2rondas.presentation.common.labelRes
 import ar.edu.uade.go2rondas.presentation.common.nameRes
 import ar.edu.uade.go2rondas.presentation.common.readingDetail
 import ar.edu.uade.go2rondas.presentation.common.rememberNow
+import ar.edu.uade.go2rondas.domain.model.HistoryEvent
+import ar.edu.uade.go2rondas.presentation.common.components.InspectionPhoto
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.flow.Flow
 
 @Composable
 fun MissionSummaryScreen(
@@ -61,7 +69,7 @@ fun MissionSummaryScreen(
             is UiState.Success -> {
                 val detail = current.data.detail
                 if (detail == null) ErrorView(stringResource(R.string.summary_not_found))
-                else SummaryBody(detail, current.data.site, onOpenCheckpoint)
+                else SummaryBody(detail, current.data.site, onOpenCheckpoint, viewModel::photo)
             }
         }
     }
@@ -71,7 +79,8 @@ fun MissionSummaryScreen(
 private fun SummaryBody(
     detail: MissionDetail,
     site: SiteConfig,
-    onOpenCheckpoint: (String, String) -> Unit
+    onOpenCheckpoint: (String, String) -> Unit,
+    photoOf: (String) -> Flow<String?>
 ) {
     val record = detail.record
     val results = detail.checkpoints.associateBy { it.checkpointId }
@@ -133,15 +142,34 @@ private fun SummaryBody(
             Text(stringResource(R.string.summary_no_events), style = MaterialTheme.typography.bodySmall)
         }
         detail.events.forEach { event ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    formatClock(event.timestampMillis),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(eventText(event), style = MaterialTheme.typography.bodySmall)
-            }
+            EventRow(event, photoOf)
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+        }
+    }
+}
+
+/** Un evento de la ronda. Si es una alerta con foto (obstáculo, agua, humo, medición), se puede ver acá. */
+@Composable
+private fun EventRow(event: HistoryEvent, photoOf: (String) -> Flow<String?>) {
+    val photoId = (event as? HistoryEvent.AlertRaised)?.photoId
+    var showPhoto by rememberSaveable(event.timestampMillis, photoId) { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                formatClock(event.timestampMillis),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(eventText(event), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+            if (photoId != null) {
+                TextButton(onClick = { showPhoto = !showPhoto }) {
+                    Text(stringResource(if (showPhoto) R.string.summary_hide_photo else R.string.summary_see_photo))
+                }
+            }
+        }
+        if (photoId != null && showPhoto) {
+            val path by remember(photoId) { photoOf(photoId) }.collectAsStateWithLifecycle(null)
+            InspectionPhoto(path, event.timestampMillis)
         }
     }
 }

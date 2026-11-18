@@ -4,6 +4,7 @@ sealed class Screen(val route: String) {
     data object RobotSelection : Screen("robots")
     data object Panel : Screen("panel")
     data object Telemetry : Screen("telemetry")
+    data object LiveCamera : Screen("camera")
     data object Missions : Screen("missions")
     data object Simulator : Screen("simulator")
     data object Alerts : Screen("alerts")

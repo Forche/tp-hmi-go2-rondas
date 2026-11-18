@@ -72,7 +72,7 @@ fun CheckpointResult.toEntity() = CheckpointResultEntity(
 fun HistoryEvent.toEntity(missionId: String?): EventEntity = when (this) {
     is HistoryEvent.AlertRaised -> EventEntity(
         missionId = missionId, timestamp = timestampMillis, kind = EventKind.ALERT,
-        alertCode = code.name, severity = severity.name, checkpointId = checkpointId
+        alertCode = code.name, severity = severity.name, checkpointId = checkpointId, photoId = photoId
     )
     is HistoryEvent.CommandSent -> EventEntity(
         missionId = missionId, timestamp = timestampMillis, kind = EventKind.COMMAND,
@@ -96,7 +96,7 @@ fun EventEntity.toDomain(): HistoryEvent? = when (kind) {
     EventKind.ALERT -> {
         val code = alertCode?.let(AlertCode::valueOf)
         val level = severity?.let(AlertSeverity::valueOf)
-        if (code != null && level != null) HistoryEvent.AlertRaised(timestamp, code, level, checkpointId) else null
+        if (code != null && level != null) HistoryEvent.AlertRaised(timestamp, code, level, checkpointId, photoId) else null
     }
     EventKind.COMMAND -> {
         val type = commandType?.let(CommandType::valueOf)

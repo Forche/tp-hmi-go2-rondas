@@ -180,7 +180,9 @@ class RobotRepositoryImpl @Inject constructor(
             )
             is RobotEvent.CheckpointInspected -> history.insertCheckpointResult(event.result.toEntity())
             is RobotEvent.AlertRaised -> saveEvent(
-                HistoryEvent.AlertRaised(event.timestampMillis, event.alert.code, event.alert.severity, event.alert.checkpointId),
+                HistoryEvent.AlertRaised(
+                    event.timestampMillis, event.alert.code, event.alert.severity, event.alert.checkpointId, event.alert.photoId
+                ),
                 event.missionId
             )
             is RobotEvent.MissionFinished -> {

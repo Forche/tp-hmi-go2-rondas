@@ -64,6 +64,7 @@ fun PanelScreen(
     onOpenMissionSummary: (String) -> Unit,
     onOpenCheckpoint: (missionId: String, checkpointId: String) -> Unit,
     onOpenSimulator: () -> Unit,
+    onOpenCamera: () -> Unit,
     viewModel: PanelViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -78,6 +79,7 @@ fun PanelScreen(
             onOpenMissionSummary = onOpenMissionSummary,
             onOpenCheckpoint = onOpenCheckpoint,
             onOpenSimulator = onOpenSimulator,
+            onOpenCamera = onOpenCamera,
             onOpenControls = viewModel::onOpenControls,
             onCloseControls = viewModel::onCloseControls,
             onPause = viewModel::onPause,
@@ -99,6 +101,7 @@ data class PanelActions(
     val onOpenMissionSummary: (String) -> Unit,
     val onOpenCheckpoint: (missionId: String, checkpointId: String) -> Unit,
     val onOpenSimulator: () -> Unit,
+    val onOpenCamera: () -> Unit,
     val onOpenControls: () -> Unit,
     val onCloseControls: () -> Unit,
     val onPause: () -> Unit,
@@ -223,8 +226,13 @@ private fun PanelBody(data: PanelData, now: Long, actions: PanelActions) {
                 )
             }
         }
-        TextButton(onClick = actions.onOpenTelemetry) {
-            Text(stringResource(R.string.panel_see_telemetry) + "  ›")
+        Row {
+            TextButton(onClick = actions.onOpenTelemetry) {
+                Text(stringResource(R.string.panel_see_telemetry) + "  ›")
+            }
+            TextButton(onClick = actions.onOpenCamera) {
+                Text(stringResource(R.string.panel_see_camera) + "  ›")
+            }
         }
         PanelButtons(snapshot, data.site.thresholds.batteryWarningPct, actions)
     }

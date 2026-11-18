@@ -5,6 +5,7 @@ enum class SimulationScenario {
     LOW_BATTERY,
     CONNECTION_LOSS,
     OBSTACLE,
+    OBSTACLE_PATH,
     WATER_LEAK,
     SMOKE,
     HIGH_TEMPERATURE,

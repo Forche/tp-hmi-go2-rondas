@@ -10,7 +10,7 @@ import random
 
 # (situación, peso): las más comunes, más seguido.
 WEIGHTS = [
-    ("temperatura", 3), ("humedad", 3), ("ruido", 3), ("obstaculo", 3), ("agua", 2),
+    ("temperatura", 3), ("humedad", 3), ("ruido", 3), ("caja", 3), ("obstaculo", 2), ("agua", 2),
     ("corte", 1), ("bateria", 1), ("humo", 1),
 ]
 ONCE_PER_ROUND = {"bateria", "humo"}

@@ -29,7 +29,9 @@ sealed interface HistoryEvent {
         override val timestampMillis: Long,
         val code: AlertCode,
         val severity: AlertSeverity,
-        val checkpointId: String?
+        val checkpointId: String?,
+        /** Foto de la cámara del robot en ese momento, si la tiene. */
+        val photoId: String? = null
     ) : HistoryEvent
 
     data class CommandSent(

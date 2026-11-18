@@ -17,7 +17,8 @@ documentación de Unitree para la versión del robot):
   la puesta en marcha). La simulación esconde este problema: ahí la posición es exacta.
 - LiDAR (obstacle_ahead): la nube de puntos del LiDAR del robot (tema de DDS del LiDAR), filtrada a la
   franja del camino que tiene por delante.
-- Cámara (take_photo): el cliente de video del SDK (VideoClient) para pedir una imagen de la cámara frontal.
+- Cámara (take_photo, live_frame): el cliente de video del SDK (VideoClient) para pedir una imagen de
+  la cámara frontal.
 - Sensores del ambiente (read_environment): el módulo de sensores agregado al robot (no viene con el
   Go2), por su propia interfaz.
 - Batería (battery, charging, battery_drain_rate): el estado de bajo nivel del robot (rt/lowstate)
