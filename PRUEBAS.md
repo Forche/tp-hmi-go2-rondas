@@ -54,7 +54,7 @@ Con la forma A conviene subir la velocidad a x10 en el modo demo (ícono de ajus
 ## E4. Incidente: obstáculo
 
 1. Iniciar una ronda completa.
-2. Poner el obstáculo: forma A, modo demo → *Obstáculo*; forma B, consola → `obstaculo` (aparece una caja naranja en el pasillo). Se ubica antes del próximo checkpoint.
+2. Poner el obstáculo: forma A, modo demo → *Obstáculo en el checkpoint*; forma B, consola → `obstaculo` (aparece una caja naranja sobre el próximo checkpoint que se pueda rodear). Tapa el punto de inspección: el robot no puede medir.
 3. El robot se detiene, el estado pasa a *Esperando decisión* y arriba del Panel aparece la alerta. En la forma B lo frena el LiDAR simulado, a 0,9 m de la caja. Tocar **Ver alerta** → **Reconocer alerta**. En la forma B, la alerta muestra la foto de la cámara frontal con la caja.
 4. Elegir **Reintentar**: la orden vuelve *rechazada* ("el obstáculo sigue ahí").
 5. Elegir **Saltear CPn**: el robot sigue al checkpoint siguiente. En la forma B se ve cómo rodea la caja.
@@ -67,10 +67,8 @@ Variante (forma B): en vez de saltear, escribir `despejar` en la consola y elegi
 
 1. Iniciar una ronda completa.
 2. Forma A, modo demo → *Temperatura crítica*; forma B, consola → `temperatura`. La próxima medición supera el umbral crítico de su zona por 1,1 °C.
-3. Al medir llega una alerta crítica con la lectura y el umbral; el robot espera.
-4. **Reconocer alerta** → **Quedarse vigilando**: el robot repite la medición 3 veces, cada 10 s de tiempo simulado.
-5. **Escalar al técnico de guardia**: queda registrado en el historial (no es una orden al robot).
-6. **Continuar**: la ronda sigue.
+3. Al medir llega una alerta crítica con la lectura, el umbral y la foto del punto (forma B). El robot no puede resolverlo: avisa y sigue la ronda.
+4. **Reconocer alerta** y **Escalar al técnico de guardia**: queda registrado en el historial (no es una orden al robot).
 
 **Esperado:** el resumen marca la anomalía en ese checkpoint (rojo en el plano y en MuJoCo) y el historial registra el escalamiento.
 
@@ -84,7 +82,10 @@ Variante (forma B): en vez de saltear, escribir `despejar` en la consola y elegi
   - El Historial y la "última ronda" son por sitio: con el Edificio B cargado aparecen vacíos, y al volver al de ejemplo reaparecen las rondas del Edificio A.
   - Un archivo inválido (por ejemplo, un checkpoint fuera del recorrido) se rechaza con el motivo, y el robot sigue con el sitio que tenía.
 
-- **Agua en el piso:** forma A, modo demo → *Agua en el piso*; forma B, consola → `agua` (aparece un charco en el pasillo). El robot frena antes y llega una alerta crítica con la foto del charco. *Quedarse vigilando* lo deja quieto; *Continuar* lo hace rodear el charco sin pisarlo y seguir la ronda.
+- **Obstáculo en el camino:** forma A, modo demo → *Obstáculo en el camino*; forma B, consola → `caja`. El robot la rodea solo y llega una advertencia *Obstáculo rodeado* con la foto; la ronda sigue sin pedir nada.
+- **Agua en el piso:** forma A, modo demo → *Agua en el piso*; forma B, consola → `agua` (aparece un charco en el pasillo). El robot lo rodea sin pisarlo y llega una alerta crítica con la foto del charco; la ronda sigue.
+- **Fotos en el historial (forma B):** después de una ronda con incidentes, abrir su resumen: cada alerta con foto tiene *Ver foto*. En el detalle de un checkpoint (por ejemplo, el salteado en E4) aparecen las fotos de sus incidentes.
+- **Cámara en vivo (forma B):** Panel → *Cámara en vivo*. Se ve lo que ve el robot mientras camina; con el enlace cortado, la imagen deja de actualizarse y lo dice. Con Go2-01 la pantalla explica que el simulador de la app no tiene cámara.
 - **Humo o fuego:** forma A, modo demo → *Humo o fuego*; forma B, consola → `humo` (aparece un foco de fuego con humo al costado del pasillo). Alerta crítica con foto; el robot vuelve a la base sin acercarse. En el Historial la ronda queda *Interrumpida* y el resumen dice qué hacer.
 - **Humedad o ruido fuera de rango:** forma A, modo demo → *Humedad fuera de rango* o *Ruido anómalo*; forma B, consola → `humedad` o `ruido`. La próxima medición genera la alerta (de advertencia o crítica) y el checkpoint queda con anomalía.
 - **Situaciones aleatorias:** forma A, interruptor *Situaciones aleatorias* en el modo demo; forma B, consola → `aleatorio`. Durante la ronda, cada 45 s a 2 min simulados pasa algo al azar. Sirve para probar la app como en una noche real, sin saber qué viene.

@@ -31,7 +31,10 @@ Tests unitarios (reglas de habilitación de órdenes, geometría del recorrido, 
 2. **Panel:** primero, una frase con lo que hace el robot y si hace falta intervenir ("Camino a CP3 · Pasillo frío. No necesitás intervenir."); después estado, conexión, batería, plano con la posición del robot y los checkpoints, progreso de la ronda y la última orden con su estado. Tocando un checkpoint ya inspeccionado se ve su medición.
 3. **Misiones:** elegís la ronda, ves su recorrido y la confirmás en una hoja que muestra cada condición de inicio.
 4. **Controles** (desde el Panel): pausar, reanudar, volver a base, cancelar (con confirmación) y la detención operativa, que se mantiene presionada 2 s.
-5. **Alertas:** con la app en segundo plano llegan como notificación (las críticas, con prioridad alta) y al tocarla se abre su detalle. Desde el detalle: reconocer, decidir cómo sigue la ronda (continuar, vigilar, reintentar, saltear) y escalar al técnico de guardia.
+5. **Alertas:** con la app en segundo plano llegan como notificación (las críticas, con prioridad alta) y al tocarla se abre su detalle. Desde el detalle: reconocer (dejar constancia de que el operador la vio), decidir cómo sigue la ronda cuando el robot lo pide (reintentar o saltear) y escalar al técnico de guardia.
+   **Criterio del robot:** si puede resolver el problema solo, saca una foto, avisa y sigue (una caja en el camino o agua: las rodea; una medición fuera de rango: avisa; humo: vuelve a la base). Sólo pide una decisión cuando no puede: un obstáculo que tapa el punto que tiene que inspeccionar (E4).
+   **Fotos:** las de los checkpoints y las de cada incidente quedan en el historial: en el resumen, *Ver foto* en cada alerta; en el detalle de un checkpoint, las fotos de los incidentes de ese punto.
+   **Cámara en vivo** (Go2-02): desde el Panel, *Cámara en vivo* muestra lo que ve el robot, unas 4 imágenes por segundo. No se guarda.
 6. **Historial:** rondas del robot elegido guardadas en Room, con el resultado de cada checkpoint y los eventos (alertas, órdenes, cortes de conexión). El resumen de cada ronda cierra con lo que conviene hacer después.
 
 ### Modo demo (los 5 escenarios del TP)
@@ -45,14 +48,15 @@ El ícono de ajustes en la barra superior del Panel abre el **modo demo**. Ahí 
 | E1. Misión normal | Iniciar una ronda completa y esperar a que vuelva a la base. El Panel ofrece el resumen. |
 | E2. Batería baja | Con una ronda en curso, activar *Batería baja*. Aparece la advertencia y *Volver a base* pasa a ser la acción principal. Al 15 % el robot vuelve solo. |
 | E3. Desconexión | Activar *Corte de conexión* (60 s). Banner, datos en gris con su antigüedad, órdenes *sin respuesta*. El robot termina el checkpoint y espera; al volver la conexión, *Reanudar*. |
-| E4. Incidente | Activar *Obstáculo*. El robot se detiene antes del próximo checkpoint; *Reintentar* vuelve rechazada mientras el obstáculo siga ahí y *Saltear* sigue la ronda. Con Go2-02, la alerta trae la foto de la caja. |
-| E5. Escenario propio | Activar *Temperatura crítica*. La próxima medición supera el umbral; el robot espera la decisión: *Quedarse vigilando*, *Continuar* o escalar. |
+| E4. Incidente | Activar *Obstáculo en el checkpoint*. Una caja tapa el próximo punto de inspección: el robot frena antes y pide una decisión. *Reintentar* vuelve rechazada mientras la caja siga ahí; *Saltear* la rodea y sigue la ronda. La alerta trae la foto de la caja (Go2-02). |
+| E5. Escenario propio | Activar *Temperatura crítica*. La próxima medición supera el umbral: alerta crítica con la lectura, el umbral y la foto del punto; el robot sigue la ronda. El operador escala al técnico de guardia. |
 
 Otras situaciones del modo demo:
 
 | Situación | Qué pasa |
 | --- | --- |
-| *Agua en el piso* | La cámara ve agua sobre el camino: el robot frena antes, alerta crítica con foto. *Continuar* la rodea sin pisarla; *Quedarse vigilando* lo deja quieto. |
+| *Obstáculo en el camino* | Una caja con lugar para pasar: el robot la rodea solo y avisa con una advertencia y la foto. |
+| *Agua en el piso* | La cámara ve agua sobre el camino: el robot la rodea sin pisarla y avisa con una alerta crítica y la foto. |
 | *Humo o fuego* | El sensor detecta humo por delante: alerta crítica, el robot corta la ronda y vuelve a la base sin acercarse. La ronda queda *Interrumpida*. |
 | *Humedad fuera de rango*, *Ruido anómalo* | La próxima medición sale de rango (advertencia o crítica). |
 | *Situaciones aleatorias* | Interruptor: durante la ronda, cada 45 s a 2 min simulados pasa algo al azar (mediciones, obstáculos, agua, cortes, batería baja o humo). |
@@ -67,7 +71,7 @@ El modo demo actúa sobre el simulador local (Go2-01). Con Go2-02 los escenarios
 
 1. Instalar y levantar el servidor siguiendo [`server/README.md`](server/README.md). `python -m go2server --viewer` abre la vista 3D: planta baja, escalera y subsuelo, con el resultado de cada checkpoint encima (azul pendiente, amarillo midiendo, verde OK, rojo anomalía, gris salteado).
 2. Elegir **Go2-02** en la app. Si el servidor no está encendido, la app muestra *Sin conexión* y reintenta cada 3 s.
-3. Desde la consola del servidor: `obstaculo`, `temperatura`, `bateria` y `corte [s]` provocan los escenarios E2 a E5; `agua`, `humo`, `humedad` y `ruido`, las otras situaciones; `aleatorio` activa las situaciones al azar; `despejar` saca el obstáculo y `velocidad N` acelera la simulación. En la vista 3D se ven la caja, el charco y el fuego con humo.
+3. Desde la consola del servidor: `obstaculo`, `temperatura`, `bateria` y `corte [s]` provocan los escenarios E2 a E5; `caja`, `agua`, `humo`, `humedad` y `ruido`, las otras situaciones; `aleatorio` activa las situaciones al azar; `despejar` saca el obstáculo y `velocidad N` acelera la simulación. En la vista 3D se ven la caja, el charco y el fuego con humo.
 
 La dirección del servidor se fija al compilar. Por defecto es `10.0.2.2:8765`, que desde el emulador apunta a la PC. Para un teléfono en la misma red Wi-Fi:
 
