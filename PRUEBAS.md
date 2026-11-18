@@ -26,7 +26,7 @@ Con la forma A conviene subir la velocidad a x10 en el modo demo (ícono de ajus
 1. Panel → **Elegir misión** → *Ronda completa* → **Continuar**. La hoja muestra las condiciones de inicio, todas en verde.
 2. **Iniciar ronda**. La orden aparece *pendiente* y enseguida *confirmada*; el estado pasa a *En ronda*.
 3. Mirar el plano: cada checkpoint inspeccionado se pone verde. Tocar uno (por ejemplo el 1) abre su medición: temperatura con su umbral, humedad y ruido. Volver con la flecha.
-4. En la forma B, en la ventana de MuJoCo el disco del checkpoint se pone amarillo mientras mide y verde al terminar, con la medición escrita encima.
+4. En la forma B, en la ventana de MuJoCo el disco del checkpoint se pone amarillo mientras mide y verde al terminar, con la medición escrita encima. En el historial, el detalle de cada checkpoint muestra la foto de la cámara frontal.
 5. Al terminar, el robot vuelve a la base y el Panel ofrece **Ver resumen**: 8/8, sin anomalías.
 
 **Esperado:** en **Historial** la ronda aparece *Completada*.
@@ -54,12 +54,14 @@ Con la forma A conviene subir la velocidad a x10 en el modo demo (ícono de ajus
 ## E4. Incidente: obstáculo
 
 1. Iniciar una ronda completa.
-2. Poner el obstáculo: forma A, modo demo → *Obstáculo*; forma B, consola → `obstaculo`. Se ubica antes del próximo checkpoint.
-3. El robot se detiene, el estado pasa a *Esperando decisión* y arriba del Panel aparece la alerta. Tocar **Ver alerta** → **Reconocer alerta**.
-4. Elegir **Reintentar**: la orden vuelve *rechazada* ("obstáculo persistente").
-5. Elegir **Saltear CPn**: el robot sigue al checkpoint siguiente.
+2. Poner el obstáculo: forma A, modo demo → *Obstáculo*; forma B, consola → `obstaculo` (aparece una caja naranja en el pasillo). Se ubica antes del próximo checkpoint.
+3. El robot se detiene, el estado pasa a *Esperando decisión* y arriba del Panel aparece la alerta. En la forma B lo frena el LiDAR simulado, a 0,9 m de la caja. Tocar **Ver alerta** → **Reconocer alerta**. En la forma B, la alerta muestra la foto de la cámara frontal con la caja.
+4. Elegir **Reintentar**: la orden vuelve *rechazada* ("el obstáculo sigue ahí").
+5. Elegir **Saltear CPn**: el robot sigue al checkpoint siguiente. En la forma B se ve cómo rodea la caja.
 
 **Esperado:** en el plano y en el resumen el checkpoint salteado aparece tachado (gris en MuJoCo).
+
+Variante (forma B): en vez de saltear, escribir `despejar` en la consola y elegir **Reintentar**. La orden se acepta y el robot sigue hasta el checkpoint.
 
 ## E5. Escenario propio: temperatura crítica
 

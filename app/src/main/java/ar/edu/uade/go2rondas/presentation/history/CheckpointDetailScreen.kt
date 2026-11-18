@@ -26,7 +26,7 @@ import ar.edu.uade.go2rondas.domain.model.CheckpointStatus
 import ar.edu.uade.go2rondas.presentation.common.checkpointLabel
 import ar.edu.uade.go2rondas.presentation.common.components.ErrorView
 import ar.edu.uade.go2rondas.presentation.common.components.LoadingView
-import ar.edu.uade.go2rondas.presentation.common.components.PhotoPlaceholder
+import ar.edu.uade.go2rondas.presentation.common.components.InspectionPhoto
 import ar.edu.uade.go2rondas.presentation.common.components.Pill
 import ar.edu.uade.go2rondas.presentation.common.components.RobotTopBar
 import ar.edu.uade.go2rondas.presentation.common.components.TelemetryCard
@@ -46,6 +46,7 @@ fun CheckpointDetailScreen(
     viewModel: MissionSummaryViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val photo by viewModel.checkpointPhoto.collectAsStateWithLifecycle()
     val now = rememberNow()
     val data = (state as? UiState.Success)?.data
     val checkpointId = viewModel.checkpointId
@@ -70,7 +71,7 @@ fun CheckpointDetailScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    PhotoPlaceholder(stringResource(R.string.alert_photo))
+                    InspectionPhoto(photo, result?.timestampMillis)
                     if (detail == null || result == null) {
                         Text(stringResource(R.string.checkpoint_not_inspected), style = MaterialTheme.typography.bodyMedium)
                         return@Column

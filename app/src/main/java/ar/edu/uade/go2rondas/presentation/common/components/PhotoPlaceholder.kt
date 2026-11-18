@@ -1,8 +1,11 @@
 package ar.edu.uade.go2rondas.presentation.common.components
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -11,14 +14,57 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ar.edu.uade.go2rondas.R
+import ar.edu.uade.go2rondas.presentation.common.formatClock
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-/** El simulador no genera imágenes: se muestra un marcador donde iría la foto del checkpoint. */
+/**
+ * Foto de la cámara frontal del robot en un checkpoint o ante un obstáculo. Si no hay foto (el
+ * simulador de la app no tiene cámara, o todavía no llegó), muestra un marcador que lo explica.
+ */
+@Composable
+fun InspectionPhoto(path: String?, takenAtMillis: Long?, modifier: Modifier = Modifier) {
+    val bitmap by produceState<ImageBitmap?>(null, path) {
+        value = path?.let { withContext(Dispatchers.IO) { BitmapFactory.decodeFile(it)?.asImageBitmap() } }
+    }
+    val image = bitmap
+    if (image == null) {
+        PhotoPlaceholder(stringResource(R.string.photo_missing), modifier)
+        return
+    }
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Image(
+            bitmap = image,
+            contentDescription = stringResource(R.string.photo_description),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(4f / 3f)
+                .clip(RoundedCornerShape(12.dp))
+        )
+        if (takenAtMillis != null) {
+            Text(
+                stringResource(R.string.photo_caption, formatClock(takenAtMillis)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/** Lugar de la foto cuando no hay imagen. */
 @Composable
 fun PhotoPlaceholder(caption: String, modifier: Modifier = Modifier) {
     Column(

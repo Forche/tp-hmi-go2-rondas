@@ -4,7 +4,7 @@ App Android para operar y supervisar un robot **Unitree Go2 EDU** que hace ronda
 Trabajo práctico grupal de Desarrollo de Aplicaciones I (UADE): interfaz HMI/HRI con telemetría simulada.
 
 El robot se simula **dentro del APK**: la app funciona sin robot, sin servidor y sin internet.
-Opcionalmente, un segundo robot (Go2-02) se conecta por WebSocket a un servidor con **MuJoCo** que mueve el modelo del Go2 ([`server/`](server/README.md)).
+Opcionalmente, un segundo robot (Go2-02) se conecta por WebSocket a un servidor con **MuJoCo**: el Go2 camina con física, detecta obstáculos con un LiDAR simulado y saca fotos con su cámara frontal ([`server/`](server/README.md)).
 
 - Prototipo en Figma: <https://www.figma.com/design/KC4Az4VPV1sjr4UUVoTD7K>
 
@@ -45,7 +45,7 @@ El ícono de ajustes en la barra superior del Panel abre el **modo demo**. Ahí 
 | E1. Misión normal | Iniciar una ronda completa y esperar a que vuelva a la base. El Panel ofrece el resumen. |
 | E2. Batería baja | Con una ronda en curso, activar *Batería baja*. Aparece la advertencia y *Volver a base* pasa a ser la acción principal. Al 15 % el robot vuelve solo. |
 | E3. Desconexión | Activar *Corte de conexión* (60 s). Banner, datos en gris con su antigüedad, órdenes *sin respuesta*. El robot termina el checkpoint y espera; al volver la conexión, *Reanudar*. |
-| E4. Incidente | Activar *Obstáculo*. El robot se detiene antes del próximo checkpoint; *Reintentar* vuelve rechazada y *Saltear* sigue la ronda. |
+| E4. Incidente | Activar *Obstáculo*. El robot se detiene antes del próximo checkpoint; *Reintentar* vuelve rechazada mientras el obstáculo siga ahí y *Saltear* sigue la ronda. Con Go2-02, la alerta trae la foto de la caja. |
 | E5. Escenario propio | Activar *Temperatura crítica*. La próxima medición supera el umbral; el robot espera la decisión: *Quedarse vigilando*, *Continuar* o escalar. |
 
 También se puede forzar que la próxima orden sea rechazada o quede sin respuesta.
@@ -56,7 +56,7 @@ El modo demo actúa sobre el simulador local (Go2-01). Con Go2-02 los escenarios
 
 1. Instalar y levantar el servidor siguiendo [`server/README.md`](server/README.md). `python -m go2server --viewer` abre la vista 3D: planta baja, escalera y subsuelo, con el resultado de cada checkpoint encima (azul pendiente, amarillo midiendo, verde OK, rojo anomalía, gris salteado).
 2. Elegir **Go2-02** en la app. Si el servidor no está encendido, la app muestra *Sin conexión* y reintenta cada 3 s.
-3. Desde la consola del servidor: `obstaculo`, `temperatura`, `bateria` y `corte [s]` provocan los escenarios E2 a E5; `velocidad N` acelera la simulación.
+3. Desde la consola del servidor: `obstaculo`, `temperatura`, `bateria` y `corte [s]` provocan los escenarios E2 a E5; `despejar` saca el obstáculo y `velocidad N` acelera la simulación.
 
 La dirección del servidor se fija al compilar. Por defecto es `10.0.2.2:8765`, que desde el emulador apunta a la PC. Para un teléfono en la misma red Wi-Fi:
 
@@ -117,8 +117,8 @@ Pantalla → ViewModel → UseCase → RobotRepository (interfaz) ← RobotRepos
 
 - No se probó con un Go2 real. Los sitios de ejemplo son genéricos y los umbrales son valores de ejemplo.
 - Las zonas y los tipos de misión son un conjunto fijo (el archivo elige entre ellos).
-- Las fotos de los checkpoints son marcadores: el simulador no genera imágenes.
-- En el servidor MuJoCo el movimiento es cinemático: el modelo del Go2 se ubica sobre el recorrido, pero no camina con control de patas.
+- El simulador local (Go2-01) no tiene cámara: en su lugar se muestra un marcador. Las fotos reales salen del servidor MuJoCo (Go2-02).
+- En el servidor MuJoCo el Go2 trota con física, pero lo guía una fuerza sobre el tronco (no hay una política de locomoción entrenada) y en la escalera el tronco va guiado, sin física.
 - La conexión con el servidor no está cifrada ni autenticada (`ws://`, sólo en debug). Una instalación real usaría `wss://` con certificado.
 - La detención de la app es un comando de software: no reemplaza la parada de emergencia física del robot.
 - Los mensajes entre app y robot siguen un contrato propio del TP, no el protocolo oficial de Unitree.

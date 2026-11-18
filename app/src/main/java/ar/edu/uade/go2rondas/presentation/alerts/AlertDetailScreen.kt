@@ -39,7 +39,7 @@ import ar.edu.uade.go2rondas.presentation.common.components.CommandButton
 import ar.edu.uade.go2rondas.presentation.common.components.CommandStatusPill
 import ar.edu.uade.go2rondas.presentation.common.components.ErrorView
 import ar.edu.uade.go2rondas.presentation.common.components.LoadingView
-import ar.edu.uade.go2rondas.presentation.common.components.PhotoPlaceholder
+import ar.edu.uade.go2rondas.presentation.common.components.InspectionPhoto
 import ar.edu.uade.go2rondas.presentation.common.components.RobotTopBar
 import ar.edu.uade.go2rondas.presentation.common.components.TelemetryCard
 import ar.edu.uade.go2rondas.presentation.common.labelRes
@@ -115,7 +115,7 @@ private fun AlertDetailBody(data: AlertDetailData, actions: AlertDetailActions) 
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         AlertCard(alert, checkpointLabel(data.site, alert.checkpointId))
-        if (alert.checkpointId != null) PhotoPlaceholder(stringResource(R.string.alert_photo))
+        if (alert.checkpointId != null) InspectionPhoto(data.photoPath, alert.timestampMillis)
         CurrentReading(data, alert)
         if (alert.requiresDecision) {
             Text(stringResource(R.string.alert_waiting_decision), style = MaterialTheme.typography.bodyMedium)

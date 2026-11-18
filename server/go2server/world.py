@@ -1,22 +1,28 @@
 """Escena de MuJoCo: el modelo del Go2 de MuJoCo Menagerie dentro del data center.
 
-El movimiento es cinemático: la base del modelo se ubica sobre el recorrido en cada ciclo y las
-patas quedan en la pose de pie ("home"). No hay controlador de locomoción. La posición que se
-informa a la app se lee del estado del modelo.
-
 La escena se arma con el archivo de sitio: salas, equipos (con su altura), escalera y checkpoints.
 Si hay subsuelo, la planta baja es un bloque macizo y el subsuelo queda al nivel del piso de la
-escena. Sobre cada checkpoint hay un cartel con el resultado de la ronda actual.
+escena. Los bloques, los equipos y los escalones tienen colisión: el robot camina sobre ellos y el
+LiDAR los ve. Hay además una caja (el obstáculo del escenario E4) escondida hasta que se usa.
+Sobre cada checkpoint hay un cartel con el resultado de la ronda actual.
+
+Cómo se mueve el robot está en body.py. Acá también se sacan las fotos de la cámara frontal.
 """
 
+import contextlib
+import io
 import math
 import os
 
 import mujoco
 import numpy as np
+from PIL import Image
 
 
-STANDING_HEIGHT = 0.27
+PHOTO_SIZE = (320, 240)
+CAMERA_OFFSET = (0.34, 0.0, 0.05)   # m desde el centro del tronco: la cámara frontal del Go2
+CAMERA_PITCH_DEG = -8.0
+CAMERA_FOVY = 72.0
 
 # Colores (r g b a) de la escena. Un área del sitio puede traer el suyo ("color": "#RRGGBB").
 SLAB = "0.80 0.82 0.85 1"
@@ -48,8 +54,12 @@ SCENE_TEMPLATE = """<mujoco model="go2 - {name}">
     <headlight diffuse="0.55 0.55 0.55" ambient="0.35 0.35 0.35" specular="0 0 0"/>
     <global azimuth="90" elevation="-55" offwidth="1280" offheight="800"/>
     <quality shadowsize="4096"/>
+    <!-- El plano de corte cercano es proporcional al tamaño de la escena (~30 cm acá): la cámara
+         frontal, a 30 cm del piso, perdería el piso que tiene delante. -->
+    <map znear="0.001"/>
   </visual>
   <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.42 0.45 0.50" rgb2="0.16 0.17 0.20" width="256" height="256"/>
     <texture type="2d" name="piso" builtin="checker" mark="edge" rgb1="0.30 0.32 0.36" rgb2="0.27 0.29 0.33"
       markrgb="0.22 0.23 0.26" width="300" height="300"/>
     <material name="piso" texture="piso" texuniform="true" texrepeat="1 1"/>
@@ -58,6 +68,9 @@ SCENE_TEMPLATE = """<mujoco model="go2 - {name}">
     <light pos="{cx} {cy} 20" dir="0.2 0.3 -1" directional="true" castshadow="true" diffuse="0.5 0.5 0.5"/>
     <geom name="floor" pos="{cx} {cy} {floor_z}" size="{sx} {sy} 0.05" type="plane" material="piso"/>
 {geoms}
+    <body name="obstaculo" mocap="true" pos="0 0 -50">
+      <geom type="box" size="0.25 0.25 0.25" rgba="0.80 0.42 0.12 1" group="1"/>
+    </body>
   </worldbody>
 </mujoco>
 """
@@ -71,16 +84,20 @@ def _rgba(color, default):
     return " ".join(f"{int(h[i:i + 2], 16) / 255:.2f}" for i in (0, 2, 4)) + " 1"
 
 
-def _box(name, left, top, width, depth, bottom, height, rgba):
-    """Caja alineada al plano: left/top/width/depth en coordenadas del plano, z desde `bottom`."""
+def _box(name, left, top, width, depth, bottom, height, rgba, solid=True):
+    """Caja alineada al plano: left/top/width/depth en coordenadas del plano, z desde `bottom`.
+    Las sólidas chocan con el robot; las otras (pisos de color) sólo se ven."""
     cx, cy = left + width / 2, -(top + depth / 2)
+    collision = "" if solid else ' contype="0" conaffinity="0"'
     return (f'    <geom name="{name}" type="box" pos="{cx:.2f} {cy:.2f} {bottom + height / 2:.3f}" '
-            f'size="{width / 2:.2f} {depth / 2:.2f} {height / 2:.3f}" rgba="{rgba}" contype="0" conaffinity="0"/>')
+            f'size="{width / 2:.2f} {depth / 2:.2f} {height / 2:.3f}" rgba="{rgba}"{collision}/>')
 
 
 def _marker(name, x, y, z, rgba, radius=0.45):
+    """Disco de un checkpoint. Es una ayuda de la ventana, no algo que haya en la sala: va en el grupo 2,
+    que la cámara del robot no muestra y el LiDAR no ve."""
     return (f'    <geom name="{name}" type="cylinder" pos="{x:.2f} {-y:.2f} {z + 0.03:.2f}" size="{radius} 0.02" '
-            f'rgba="{rgba}" contype="0" conaffinity="0"/>')
+            f'rgba="{rgba}" contype="0" conaffinity="0" group="2"/>')
 
 
 def _ground_floor_slab(site):
@@ -117,7 +134,7 @@ def build_scene_xml(site):
             if kind == "STAIRS" and site.stairs is not None and top < site.stairs[2] < top + height:
                 height = site.stairs[2] - top  # el piso termina donde empiezan los escalones
             geoms.append(_box(f"piso_{i}", left + 0.1, top + 0.1, width - 0.2, height - 0.2, z, 0.02,
-                              _rgba(area.get("color"), FLOOR_COLORS[(kind, level)])))
+                              _rgba(area.get("color"), FLOOR_COLORS[(kind, level)]), solid=False))
     if site.stairs is not None and depth > 0:
         # Escalones: bajan de forma pareja desde la planta baja hasta el subsuelo.
         sx0, sx1, stairs_top, stairs_bottom = site.stairs
@@ -163,9 +180,9 @@ class World:
         self.model = mujoco.MjModel.from_xml_path(scene_path)
         self.data = mujoco.MjData(self.model)
         mujoco.mj_resetDataKeyframe(self.model, self.data, self.model.key("home").id)
-        self.home_qpos = self.data.qpos.copy()
         self.marker_ids = {cp: self.model.geom(f"cp_{cp.lower()}").id for cp in site.checkpoints}
         self.marks = {}
+        self.renderer = None
         self.viewer = None
         if with_viewer:
             from mujoco import viewer as mujoco_viewer  # sólo si se pide la ventana
@@ -183,23 +200,24 @@ class World:
         cam.elevation = -50.0
         cam.azimuth = 90.0
 
-    def show_checkpoints(self, marks):
-        """Estado de cada checkpoint en la ronda actual: {cp: (estado, lectura)}. Se dibuja en el próximo place()."""
-        self.marks = dict(marks)
+    def lock(self):
+        """La ventana dibuja desde otro hilo: el estado se toca con su lock tomado."""
+        return self.viewer.lock() if self.viewer is not None else contextlib.nullcontext()
 
-    def place(self, plan_x, plan_y, heading_deg):
-        """Ubica la base del robot. En el plano y crece hacia abajo; en MuJoCo, hacia arriba."""
-        yaw = math.radians(-heading_deg)
-        qpos = self.home_qpos.copy()
-        qpos[0], qpos[1], qpos[2] = plan_x, -plan_y, self.site.floor_z(plan_x, plan_y) + STANDING_HEIGHT
-        qpos[3:7] = [math.cos(yaw / 2), 0.0, 0.0, math.sin(yaw / 2)]
-        if self.viewer is not None:
-            with self.viewer.lock():
-                self._apply(qpos)
-                self.draw_labels(self.viewer.user_scn)
-            self.viewer.sync()
-        else:
-            self._apply(qpos)
+    def show_checkpoints(self, marks):
+        """Estado de cada checkpoint en la ronda actual: {cp: (estado, lectura)}."""
+        self.marks = dict(marks)
+        for cp, geom_id in self.marker_ids.items():
+            status = (self.marks.get(cp) or ("PENDING", None))[0]
+            self.model.geom_rgba[geom_id] = MARKER_COLORS[status]
+
+    def sync(self):
+        """Muestra en la ventana el estado actual de la simulación."""
+        if self.viewer is None:
+            return
+        with self.viewer.lock():
+            self.draw_labels(self.viewer.user_scn)
+        self.viewer.sync()
 
     def draw_labels(self, scene):
         """Carteles fijos y de checkpoints en una escena de usuario (la del visor o la de un render)."""
@@ -220,14 +238,37 @@ class World:
         geom.label = text
         scene.ngeom += 1
 
-    def _apply(self, qpos):
-        self.data.qpos[:] = qpos
-        self.data.qvel[:] = 0.0
-        for cp, geom_id in self.marker_ids.items():
-            status = (self.marks.get(cp) or ("PENDING", None))[0]
-            self.model.geom_rgba[geom_id] = MARKER_COLORS[status]
-        mujoco.mj_forward(self.model, self.data)
+    # ------------------------------------------------------------ cámara
 
-    def plan_position(self):
-        """Posición de la base leída del modelo, en coordenadas del plano."""
-        return float(self.data.qpos[0]), float(-self.data.qpos[1])
+    def front_camera(self, body_pos, body_rot):
+        """Cámara libre ubicada donde está la cámara frontal del Go2, mirando hacia adelante."""
+        position = body_pos + body_rot @ np.array(CAMERA_OFFSET)
+        forward = body_rot @ np.array([1.0, 0.0, 0.0])
+        yaw = math.atan2(forward[1], forward[0])
+        pitch = math.radians(CAMERA_PITCH_DEG)
+        direction = np.array([math.cos(pitch) * math.cos(yaw), math.cos(pitch) * math.sin(yaw), math.sin(pitch)])
+        cam = mujoco.MjvCamera()
+        cam.type = mujoco.mjtCamera.mjCAMERA_FREE
+        cam.distance = 1.0
+        cam.lookat[:] = position + direction * cam.distance
+        cam.azimuth = math.degrees(yaw)
+        cam.elevation = CAMERA_PITCH_DEG
+        return cam
+
+    def photo(self, body_pos, body_rot):
+        """Foto JPEG de la cámara frontal: lo que el robot tiene adelante en este momento."""
+        if self.renderer is None:
+            self.renderer = mujoco.Renderer(self.model, height=PHOTO_SIZE[1], width=PHOTO_SIZE[0])
+            self.photo_option = mujoco.MjvOption()
+            self.photo_option.geomgroup[2] = 0  # sin los discos de la ventana ni el propio robot
+        with self.lock():
+            # Gran angular, como la cámara del robot (la de la ventana usa el ángulo por defecto).
+            fovy = self.model.vis.global_.fovy
+            self.model.vis.global_.fovy = CAMERA_FOVY
+            self.renderer.update_scene(self.data, camera=self.front_camera(body_pos, body_rot),
+                                       scene_option=self.photo_option)
+            self.model.vis.global_.fovy = fovy
+        pixels = self.renderer.render()
+        buffer = io.BytesIO()
+        Image.fromarray(pixels).save(buffer, "JPEG", quality=82)
+        return buffer.getvalue()

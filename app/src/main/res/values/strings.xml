@@ -227,7 +227,9 @@
     <string name="alerts_all_acknowledged">Todas las alertas están reconocidas</string>
     <string name="alerts_empty">Sin alertas en esta sesión</string>
     <string name="alert_title">Alerta</string>
-    <string name="alert_photo">Foto del checkpoint (imagen de ejemplo)</string>
+    <string name="photo_missing">Sin foto: el robot simulado en la app no tiene cámara</string>
+    <string name="photo_caption">Cámara frontal del robot · %1$s</string>
+    <string name="photo_description">Foto de la cámara frontal del robot</string>
     <string name="alert_waiting_decision">El robot está detenido y espera una decisión del operador.</string>
     <string name="alert_acknowledge_first">Para decidir cómo sigue la ronda, primero reconocé la alerta.</string>
     <string name="alert_how_continue">¿Cómo sigue la ronda?</string>

@@ -78,7 +78,8 @@ fun AlertDto.toDomain(): Alert? {
         threshold = threshold,
         requiresDecision = requiresDecision,
         decisionOptions = options.mapNotNull { it.toEnumOrNull<IncidentDecision>() },
-        acknowledged = acknowledged
+        acknowledged = acknowledged,
+        photoId = photoId
     )
 }
 
