@@ -97,6 +97,41 @@ class SimulatedRobotTest(unittest.TestCase):
         self.assertGreater(closest, 0.6)  # pasó por el costado del charco
         self.assertLess(self.tilt_deg(), 15)
 
+    def test_what_was_asked_and_did_not_show_up_is_dropped_when_the_round_ends(self):
+        # El humo pedido mientras el robot vuelve no aparece (va hacia atrás) y no tiene que cortar la ronda siguiente.
+        self.make()
+        self.mission_control.handle("START_MISSION", {"mission": "FULL_ROUND"})
+        self.run_until(lambda: self.mission_control.mission.inspected == 1)
+        self.mission_control.handle("RETURN_TO_BASE", {})
+        self.robot.trigger("SMOKE")
+        self.run_until(lambda: self.mission_control.state == "AT_BASE")
+        self.assertEqual(set(), self.robot.armed)
+        self.mission_control.handle("START_MISSION", {"mission": "FULL_ROUND"})
+        self.run_until(lambda: self.mission_control.mission.inspected == 1)
+        self.assertFalse(any(a["code"] == "SMOKE_DETECTED" for a in self.mission_control.alerts))
+
+    def test_the_smoke_photo_shows_the_fire(self):
+        # El foco aparece en el tramo recto que va recorriendo el robot: la cámara lo tiene adelante.
+        from PIL import Image
+        self.make()
+        self.mission_control.handle("START_MISSION", {"mission": "FULL_ROUND"})
+        self.robot.trigger("SMOKE")
+        self.run_until(lambda: self.mission_control.state == "RETURNING")
+        jpeg = next(j for pid, j in self.robot.drain_photos() if pid.endswith("_humo"))
+        pixels = Image.open(io.BytesIO(jpeg)).convert("RGB").getdata()
+        flame = sum(1 for r, g, b in pixels if r > 200 and 60 < g < 170 and b < 80)
+        self.assertGreater(flame, 100)
+
+    def test_a_fallen_robot_gets_up_by_itself_and_goes_on(self):
+        self.make()
+        self.mission_control.handle("START_MISSION", {"mission": "FULL_ROUND"})
+        self.run_until(lambda: self.body.distance > 3.0)
+        # Lo tumba de costado.
+        self.scene.data.qpos[3:7] = [math.cos(math.pi / 4), math.sin(math.pi / 4), 0.0, 0.0]
+        self.run_until(lambda: self.body.recoveries == 1, max_seconds=10)
+        self.assertLess(self.tilt_deg(), 15)
+        self.run_until(lambda: self.mission_control.mission.inspected == 1)
+
     def test_the_front_camera_takes_a_jpeg(self):
         from PIL import Image
         self.make()
