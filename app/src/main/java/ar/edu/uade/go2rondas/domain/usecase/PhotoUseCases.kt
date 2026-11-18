@@ -16,6 +16,8 @@ class ObservePhotoUseCase @Inject constructor(private val repository: PhotoRepos
     fun ofCheckpoint(missionId: String, checkpointId: String): Flow<String?> =
         repository.observePhoto("${missionId}_$checkpointId")
 
+    fun ofId(photoId: String): Flow<String?> = repository.observePhoto(photoId)
+
     fun ofAlert(alert: Alert?): Flow<String?> =
         alert?.photoId?.let(repository::observePhoto) ?: flowOf(null)
 }

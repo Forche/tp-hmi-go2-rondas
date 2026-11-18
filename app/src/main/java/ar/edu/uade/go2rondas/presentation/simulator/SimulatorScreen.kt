@@ -46,6 +46,7 @@ private fun SimulationScenario.titleRes(): Int = when (this) {
     SimulationScenario.LOW_BATTERY -> R.string.scenario_low_battery
     SimulationScenario.CONNECTION_LOSS -> R.string.scenario_connection_loss
     SimulationScenario.OBSTACLE -> R.string.scenario_obstacle
+    SimulationScenario.OBSTACLE_PATH -> R.string.scenario_obstacle_path
     SimulationScenario.HIGH_TEMPERATURE -> R.string.scenario_high_temperature
     SimulationScenario.WATER_LEAK -> R.string.scenario_water
     SimulationScenario.SMOKE -> R.string.scenario_smoke
@@ -60,6 +61,7 @@ private fun SimulationScenario.detailRes(): Int = when (this) {
     SimulationScenario.LOW_BATTERY -> R.string.scenario_low_battery_detail
     SimulationScenario.CONNECTION_LOSS -> R.string.scenario_connection_loss_detail
     SimulationScenario.OBSTACLE -> R.string.scenario_obstacle_detail
+    SimulationScenario.OBSTACLE_PATH -> R.string.scenario_obstacle_path_detail
     SimulationScenario.HIGH_TEMPERATURE -> R.string.scenario_high_temperature_detail
     SimulationScenario.WATER_LEAK -> R.string.scenario_water_detail
     SimulationScenario.SMOKE -> R.string.scenario_smoke_detail

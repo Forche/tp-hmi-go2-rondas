@@ -75,16 +75,16 @@ class RobotSimulatorTest {
     }
 
     @Test
-    fun `a critical temperature stops the round until the operator decides`() {
+    fun `a critical temperature is reported and the round goes on`() {
         startFullRound()
         simulator.trigger(SimulationScenario.HIGH_TEMPERATURE)
-        runUntil { simulator.state == OperationalState.AWAITING_DECISION }
+        runUntil { simulator.alerts().any { it.code == AlertCode.TEMPERATURE_HIGH } }
 
         val alert = simulator.alerts().first()
-        assertEquals(AlertCode.TEMPERATURE_HIGH, alert.code)
         assertEquals(AlertSeverity.CRITICAL, alert.severity)
-        assertEquals(CommandOutcome.Confirmed, simulator.handle(Command.DecideIncident("c-2", alert.id, IncidentDecision.CONTINUE)))
-        assertEquals(OperationalState.ON_MISSION, simulator.state)
+        assertTrue(!alert.requiresDecision)
+        runUntil { simulator.state == OperationalState.AT_BASE }
+        assertEquals(MissionResult.COMPLETED, finished().result)
     }
 
     @Test
@@ -149,20 +149,28 @@ class RobotSimulatorTest {
     }
 
     @Test
-    fun `water stops the robot and continue goes around it`() {
+    fun `water is reported and the robot goes around it without asking`() {
         startFullRound()
         simulator.trigger(SimulationScenario.WATER_LEAK)
-        runUntil { simulator.state == OperationalState.AWAITING_DECISION }
+        runUntil { simulator.alerts().any { it.code == AlertCode.WATER_DETECTED } }
 
         val alert = simulator.alerts().first()
-        assertEquals(AlertCode.WATER_DETECTED, alert.code)
         assertEquals(AlertSeverity.CRITICAL, alert.severity)
-        assertEquals(listOf(IncidentDecision.CONTINUE, IncidentDecision.WATCH), alert.decisionOptions)
-        assertEquals(CommandOutcome.Confirmed, simulator.handle(Command.DecideIncident("c-2", alert.id, IncidentDecision.WATCH)))
-        assertEquals(OperationalState.AWAITING_DECISION, simulator.state)
-        assertEquals(CommandOutcome.Confirmed, simulator.handle(Command.DecideIncident("c-3", alert.id, IncidentDecision.CONTINUE)))
+        assertTrue(!alert.requiresDecision)
         runUntil { simulator.state == OperationalState.AT_BASE }
         assertEquals(MissionResult.COMPLETED, finished().result)
+    }
+
+    @Test
+    fun `an obstacle on the way is avoided without asking`() {
+        startFullRound()
+        simulator.trigger(SimulationScenario.OBSTACLE_PATH)
+        runUntil { simulator.alerts().any { it.code == AlertCode.OBSTACLE_AVOIDED } }
+
+        assertTrue(!simulator.alerts().first().requiresDecision)
+        runUntil { simulator.state == OperationalState.AT_BASE }
+        assertEquals(MissionResult.COMPLETED, finished().result)
+        assertTrue(inspected().none { it.status == CheckpointStatus.SKIPPED })
     }
 
     @Test

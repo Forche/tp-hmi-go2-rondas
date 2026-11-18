@@ -38,6 +38,9 @@ import ar.edu.uade.go2rondas.presentation.common.noiseState
 import ar.edu.uade.go2rondas.presentation.common.rememberNow
 import ar.edu.uade.go2rondas.presentation.common.temperatureLimit
 import ar.edu.uade.go2rondas.presentation.common.temperatureState
+import ar.edu.uade.go2rondas.presentation.common.titleRes
+import ar.edu.uade.go2rondas.domain.model.HistoryEvent
+import androidx.compose.runtime.remember
 
 /** Usa el mismo ViewModel que el resumen: el checkpoint llega como segundo argumento de la ruta. */
 @Composable
@@ -71,7 +74,25 @@ fun CheckpointDetailScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    InspectionPhoto(photo, result?.timestampMillis)
+                    // Un punto salteado no tiene foto de inspección; las de sus incidentes van abajo.
+                    if (result?.status != CheckpointStatus.SKIPPED) InspectionPhoto(photo, result?.timestampMillis)
+                    val incidents = detail?.events.orEmpty()
+                        .filterIsInstance<HistoryEvent.AlertRaised>()
+                        .filter { it.checkpointId == checkpointId && it.photoId != null }
+                        .filter { it.photoId != "${detail?.record?.id}_$checkpointId" }  // la de la inspección ya está arriba
+                    if (incidents.isNotEmpty()) {
+                        Text(
+                            stringResource(R.string.checkpoint_incident_photos),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        incidents.forEach { incident ->
+                            val path by remember(incident.photoId) { viewModel.photo(incident.photoId!!) }
+                                .collectAsStateWithLifecycle(null)
+                            Text(stringResource(incident.code.titleRes()), style = MaterialTheme.typography.labelLarge)
+                            InspectionPhoto(path, incident.timestampMillis)
+                        }
+                    }
                     if (detail == null || result == null) {
                         Text(stringResource(R.string.checkpoint_not_inspected), style = MaterialTheme.typography.bodyMedium)
                         return@Column

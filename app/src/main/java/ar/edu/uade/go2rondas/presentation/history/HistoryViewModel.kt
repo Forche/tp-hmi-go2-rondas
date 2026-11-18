@@ -15,6 +15,7 @@ import ar.edu.uade.go2rondas.domain.usecase.ObserveMissionHistoryUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObservePhotoUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveRobotSnapshotUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
@@ -57,11 +58,14 @@ class MissionSummaryViewModel @Inject constructor(
     observeRobotSnapshot: ObserveRobotSnapshotUseCase,
     observeSiteConfig: ObserveSiteConfigUseCase,
     observeMissionDetail: ObserveMissionDetailUseCase,
-    observePhoto: ObservePhotoUseCase
+    private val observePhoto: ObservePhotoUseCase
 ) : ViewModel() {
 
     private val missionId: String = checkNotNull(savedStateHandle[Screen.MissionSummary.ARG_MISSION_ID])
     val checkpointId: String? = savedStateHandle[Screen.CheckpointDetail.ARG_CHECKPOINT_ID]
+
+    /** Archivo de una foto guardada (la de un checkpoint o la de una alerta), o null si no está. */
+    fun photo(photoId: String): Flow<String?> = observePhoto.ofId(photoId)
 
     /** Foto de la cámara del robot en este checkpoint (sólo el robot de MuJoCo saca fotos). */
     val checkpointPhoto: StateFlow<String?> =

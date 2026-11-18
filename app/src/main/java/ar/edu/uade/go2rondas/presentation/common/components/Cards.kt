@@ -115,6 +115,7 @@ fun alertDetailText(context: Context, alert: Alert, checkpointLabel: String?): S
     val threshold = alert.threshold ?: 0.0
     return when (alert.code) {
         AlertCode.OBSTACLE -> context.getString(R.string.alert_detail_obstacle, place)
+        AlertCode.OBSTACLE_AVOIDED -> context.getString(R.string.alert_detail_obstacle_avoided, place)
         AlertCode.TEMPERATURE_HIGH -> context.getString(R.string.alert_detail_temperature, place, value, threshold)
         AlertCode.HUMIDITY_OUT_OF_RANGE -> context.getString(R.string.alert_detail_humidity, place, value, threshold)
         AlertCode.NOISE_HIGH -> context.getString(R.string.alert_detail_noise, place, value, threshold)

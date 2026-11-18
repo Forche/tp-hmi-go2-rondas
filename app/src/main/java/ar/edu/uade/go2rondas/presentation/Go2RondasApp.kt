@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -39,6 +40,7 @@ import ar.edu.uade.go2rondas.core.navigation.Screen
 import ar.edu.uade.go2rondas.presentation.alerts.AlertDetailScreen
 import ar.edu.uade.go2rondas.presentation.alerts.AlertsScreen
 import ar.edu.uade.go2rondas.presentation.common.LocalSnackbarHostState
+import ar.edu.uade.go2rondas.presentation.camera.LiveCameraScreen
 import ar.edu.uade.go2rondas.presentation.history.CheckpointDetailScreen
 import ar.edu.uade.go2rondas.presentation.history.HistoryScreen
 import ar.edu.uade.go2rondas.presentation.history.MissionSummaryScreen
@@ -91,10 +93,11 @@ fun Go2RondasApp(alertToOpen: MutableStateFlow<String?>) {
         navController.navigate(Screen.AlertDetail.createRoute(alertId))
     }
 
+    val showsTabs = AppTab.entries.any { it.screen.route == currentRoute }
     CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
         Scaffold(
             bottomBar = {
-                if (AppTab.entries.any { it.screen.route == currentRoute }) {
+                if (showsTabs) {
                     NavigationBar {
                         AppTab.entries.forEach { tab ->
                             NavigationBarItem(
@@ -107,7 +110,10 @@ fun Go2RondasApp(alertToOpen: MutableStateFlow<String?>) {
                     }
                 }
             },
-            snackbarHost = { SnackbarHost(snackbarHostState) },
+            // Sin la barra de pestañas, el aviso queda por encima de la barra de navegación del sistema.
+            snackbarHost = {
+                SnackbarHost(snackbarHostState, if (showsTabs) Modifier else Modifier.navigationBarsPadding())
+            },
             // Cada pantalla maneja la barra de estado con su barra superior.
             contentWindowInsets = WindowInsets(0)
         ) { padding ->
@@ -128,7 +134,8 @@ fun Go2RondasApp(alertToOpen: MutableStateFlow<String?>) {
                         onOpenCheckpoint = { missionId, checkpointId ->
                             navController.navigate(Screen.CheckpointDetail.createRoute(missionId, checkpointId))
                         },
-                        onOpenSimulator = { navController.navigate(Screen.Simulator.route) }
+                        onOpenSimulator = { navController.navigate(Screen.Simulator.route) },
+                        onOpenCamera = { navController.navigate(Screen.LiveCamera.route) }
                     )
                 }
                 composable(Screen.Simulator.route) {
@@ -168,6 +175,9 @@ fun Go2RondasApp(alertToOpen: MutableStateFlow<String?>) {
                         onBack = { navController.popBackStack() },
                         onBackToPanel = { navController.openTab(AppTab.PANEL) }
                     )
+                }
+                composable(Screen.LiveCamera.route) {
+                    LiveCameraScreen(onBack = { navController.popBackStack() })
                 }
                 composable(Screen.Telemetry.route) {
                     TelemetryScreen(onBack = { navController.popBackStack() })

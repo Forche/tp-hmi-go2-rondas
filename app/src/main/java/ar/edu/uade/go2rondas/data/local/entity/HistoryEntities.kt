@@ -65,7 +65,8 @@ data class EventEntity(
     val commandType: String? = null,
     val commandStatus: String? = null,
     val rejectionReason: String? = null,
-    val downtimeSeconds: Long? = null
+    val downtimeSeconds: Long? = null,
+    val photoId: String? = null
 )
 
 /** Ronda con sus contadores, calculados en la consulta SQL. */

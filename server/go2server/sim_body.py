@@ -146,6 +146,9 @@ class PhysicsBody(KinematicBody):
     def hold(self):
         self.goal = self.distance
         self.reference = self.distance
+        # Quieto, mira en el sentido del recorrido (después de un desvío pudo quedar girado):
+        # así la cámara apunta a lo que tiene que inspeccionar.
+        self.yaw_goal = self._route_yaw(self.distance, self.forward)
 
     def advance(self, dt):
         """La física avanza en frame(); acá sólo se informa lo medido."""

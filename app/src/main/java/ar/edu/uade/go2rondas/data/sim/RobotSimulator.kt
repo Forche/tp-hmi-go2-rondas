@@ -71,19 +71,18 @@ class RobotSimulator(
     private var inspectionRemaining = 0.0
     private var obstacleArmed = false
     private var obstacleAt: Double? = null
+    private var pathObstacleArmed = false
+    private var pathObstacleAt: Double? = null
     private var highTemperatureArmed = false
     private var humidityArmed = false
     private var noiseArmed = false
     private var waterArmed = false
     private var waterAt: Double? = null
-    private var waterBypassed = false
     private var smokeArmed = false
     private var smokeAt: Double? = null
     private var drainMultiplier = 1.0
     private var lowBatteryAlerted = false
     private var criticalBatteryAlerted = false
-    private var watchReadingsLeft = 0
-    private var watchTimer = 0.0
     private var stoppedWhileReturning = false
     private var linkAvailable = true
     private var secondsWithoutLink = 0.0
@@ -116,11 +115,7 @@ class RobotSimulator(
                 moveTowards(0.0, dt)
                 if (distance <= 0.0) arriveAtBase()
             }
-            AWAITING_DECISION -> {
-                speed = 0.0
-                tickWatch(dt)
-            }
-            PAUSED, STOPPED -> speed = 0.0
+            AWAITING_DECISION, PAUSED, STOPPED -> speed = 0.0
         }
         drainBattery(dt)
         checkBattery()
@@ -169,19 +164,29 @@ class RobotSimulator(
                 return
             }
         }
-        // Frena antes del agua en el piso (la ve la cámara) o de un obstáculo (lo ve el LiDAR).
+        // Lo que el robot puede resolver solo: lo rodea, avisa y sigue.
+        waterAt?.let { water ->
+            if (water - distance in 0.0..CAMERA_RANGE) {
+                waterAt = null
+                raiseAlert(AlertSeverity.CRITICAL, AlertCode.WATER_DETECTED, target.checkpoint.id, null, null)
+            }
+        }
+        pathObstacleAt?.let { obstacle ->
+            if (obstacle - distance in 0.0..LIDAR_RANGE) {
+                pathObstacleAt = null
+                raiseAlert(AlertSeverity.WARNING, AlertCode.OBSTACLE_AVOIDED, target.checkpoint.id, null, null)
+            }
+        }
+        // Un obstáculo que tapa el punto de inspección no lo puede resolver: frena y pide una decisión (E4).
         val obstacleStop = obstacleAt?.let { it - OBSTACLE_GAP }?.takeIf { it < target.distance }
-        val waterStop = waterAt?.takeUnless { waterBypassed }?.let { it - WATER_GAP }?.takeIf { it < target.distance }
-        val stopAt = listOfNotNull(target.distance, obstacleStop, waterStop).min()
+        val stopAt = obstacleStop ?: target.distance
         moveTowards(stopAt, dt)
         if (distance < stopAt - EPSILON) return
-        when (stopAt) {
-            waterStop -> raiseWater(target)
-            obstacleStop -> raiseObstacle(target)
-            else -> {
-                speed = 0.0
-                inspectionRemaining = INSPECTION_SECONDS
-            }
+        if (obstacleStop != null) {
+            raiseObstacle(target)
+        } else {
+            speed = 0.0
+            inspectionRemaining = INSPECTION_SECONDS
         }
     }
 
@@ -189,12 +194,15 @@ class RobotSimulator(
     private fun placeArmedHazards(target: Target) {
         val gap = target.distance - distance
         if (obstacleArmed && obstacleAt == null && gap > 1.5) {
-            obstacleAt = distance + min(3.0, gap / 2)
+            obstacleAt = target.distance  // sobre el checkpoint: tapa el punto de inspección
             obstacleArmed = false
+        }
+        if (pathObstacleArmed && pathObstacleAt == null && gap > 4.5) {
+            pathObstacleAt = distance + min(4.5, gap / 2)
+            pathObstacleArmed = false
         }
         if (waterArmed && waterAt == null && gap > 3.0) {
             waterAt = distance + min(3.5, gap / 2)
-            waterBypassed = false
             waterArmed = false
         }
         if (smokeArmed && smokeAt == null && gap > 2.0) {
@@ -249,22 +257,12 @@ class RobotSimulator(
         m.lastCheckpointId = checkpoint.id
         emit(RobotEvent.CheckpointInspected(clock(), CheckpointResult(m.id, checkpoint.id, status, reading, clock())))
 
-        var waitsForDecision = false
+        // Una medición fuera de rango la resuelve una persona en el lugar: el robot avisa y sigue.
         issues.forEach { issue ->
-            val needsDecision = issue.code == AlertCode.TEMPERATURE_HIGH && issue.severity == AlertSeverity.CRITICAL
-            if (needsDecision) waitsForDecision = true
-            raiseAlert(
-                severity = issue.severity,
-                code = issue.code,
-                checkpointId = checkpoint.id,
-                measured = issue.value,
-                threshold = issue.threshold,
-                options = if (needsDecision) listOf(IncidentDecision.CONTINUE, IncidentDecision.WATCH) else emptyList()
-            )
+            raiseAlert(issue.severity, issue.code, checkpoint.id, issue.value, issue.threshold)
         }
         m.nextIndex++
         state = when {
-            waitsForDecision -> AWAITING_DECISION
             // Regla R3: sin enlace termina el checkpoint y espera en un lugar seguro.
             !linkAvailable -> PAUSED
             m.allDone -> RETURNING
@@ -326,29 +324,6 @@ class RobotSimulator(
             humidityPct = round1(humidity),
             noiseDba = round1(noise),
             noiseBaselineDba = noiseBaseline
-        )
-    }
-
-    /** Vigilancia del punto: repite la medición cada [WATCH_INTERVAL_SECONDS] mientras espera la decisión. */
-    private fun tickWatch(dt: Double) {
-        if (watchReadingsLeft <= 0) return
-        watchTimer -= dt
-        if (watchTimer > 0) return
-        lastReading = lastReading?.let { it.copy(temperatureC = round1(it.temperatureC + random.nextDouble(-0.3, 0.3))) }
-        watchReadingsLeft--
-        watchTimer = WATCH_INTERVAL_SECONDS
-    }
-
-    private fun raiseWater(target: Target) {
-        speed = 0.0
-        state = AWAITING_DECISION
-        raiseAlert(
-            severity = AlertSeverity.CRITICAL,
-            code = AlertCode.WATER_DETECTED,
-            checkpointId = target.checkpoint.id,
-            measured = null,
-            threshold = null,
-            options = listOf(IncidentDecision.CONTINUE, IncidentDecision.WATCH)
         )
     }
 
@@ -516,20 +491,8 @@ class RobotSimulator(
                 resolve(alert.id)
                 state = if (m.allDone) RETURNING else ON_MISSION
             }
-            IncidentDecision.CONTINUE -> confirmed {
-                watchReadingsLeft = 0
-                // Sigue rodeando el agua, sin pisarla.
-                if (alert.code == AlertCode.WATER_DETECTED) waterBypassed = true
-                resolve(alert.id)
-                state = if (m.allDone) RETURNING else ON_MISSION
-            }
-            // Se queda quieto mirando; si es una temperatura, además repite la medición.
-            IncidentDecision.WATCH -> confirmed {
-                if (alert.code == AlertCode.TEMPERATURE_HIGH) {
-                    watchReadingsLeft = WATCH_READINGS
-                    watchTimer = WATCH_INTERVAL_SECONDS
-                }
-            }
+            // El robot ya no ofrece estas decisiones: lo que puede resolver, lo resuelve solo.
+            IncidentDecision.CONTINUE, IncidentDecision.WATCH -> rejected(RejectionReason.INVALID_STATE)
         }
     }
 
@@ -562,6 +525,7 @@ class RobotSimulator(
                 drainMultiplier = LOW_BATTERY_DRAIN_MULTIPLIER
             }
             SimulationScenario.OBSTACLE -> obstacleArmed = true
+            SimulationScenario.OBSTACLE_PATH -> pathObstacleArmed = true
             SimulationScenario.HIGH_TEMPERATURE -> highTemperatureArmed = true
             SimulationScenario.HUMIDITY_ANOMALY -> humidityArmed = true
             SimulationScenario.NOISE_ANOMALY -> noiseArmed = true
@@ -581,8 +545,8 @@ class RobotSimulator(
     /** Entre rondas el personal retira la caja, seca el agua y apaga el fuego. */
     private fun clearHazards() {
         obstacleAt = null
+        pathObstacleAt = null
         waterAt = null
-        waterBypassed = false
         smokeAt = null
     }
 
@@ -669,7 +633,6 @@ class RobotSimulator(
 
     private fun resolveDecisions() {
         alerts.filter { it.requiresDecision }.forEach { resolve(it.id) }
-        watchReadingsLeft = 0
     }
 
     private fun emit(event: RobotEvent) {
@@ -691,14 +654,13 @@ class RobotSimulator(
         const val SPEED_MPS = 0.5
         const val INSPECTION_SECONDS = 4.0
         const val OBSTACLE_GAP = 0.6
-        const val WATER_GAP = 1.3
+        const val CAMERA_RANGE = 3.5
+        const val LIDAR_RANGE = 4.0
         const val SMOKE_RANGE = 4.5
         const val CHARGE_RATE = 0.25
         const val MOVING_DRAIN_PER_SECOND = 0.012
         const val IDLE_DRAIN_PER_SECOND = 0.004
         const val LOW_BATTERY_DRAIN_MULTIPLIER = 15.0
-        const val WATCH_READINGS = 3
-        const val WATCH_INTERVAL_SECONDS = 10.0
         const val MAX_SECONDS_WITHOUT_LINK = 300.0
         const val MAX_ALERTS = 30
     }
