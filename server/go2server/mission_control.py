@@ -13,6 +13,9 @@ import time
 INSPECTION_SECONDS = 4.0
 OBSTACLE_GAP = 0.9          # m entre el centro del robot y el obstáculo al detenerse
 LIDAR_RANGE = 4.0           # m de camino que revisa por delante
+CAMERA_RANGE = 3.5          # m de camino en los que la cámara distingue agua en el piso
+WATER_GAP = 1.3             # m entre el centro del robot y el agua al detenerse
+SMOKE_RANGE = 4.5           # m a los que el sensor de humo detecta un foco por delante
 # Consumo de referencia del robot, para estimar cuánto le dura la batería (regla R5 y autonomía).
 NOMINAL_SPEED_MPS = 0.5
 NOMINAL_MOVING_DRAIN = 0.012    # %/s caminando
@@ -37,7 +40,8 @@ class Mission:
         self.inspected = 0
         self.skipped = 0
         self.elapsed = 0.0
-        self.cancelled = False
+        self.cancelled = False      # el operador la anuló
+        self.interrupted = False    # volvió sin terminar: el operador, humo o sin enlace
         self.low_battery = False
         self.last_checkpoint = None
 
@@ -114,6 +118,7 @@ class MissionControl:
         self.seconds_without_link += dt
         if self.seconds_without_link >= MAX_SECONDS_WITHOUT_LINK and self.mission and self.state not in ("RETURNING", "AT_BASE"):
             self._resolve_decisions()
+            self.mission.interrupted = True
             self.state = "RETURNING"
 
     def _at_base(self):
@@ -140,20 +145,44 @@ class MissionControl:
         checkpoint_id, target_distance = target
         if self._lacks_battery_for_basement(m, checkpoint_id):
             return
-        # LiDAR: si algo bloquea el camino antes del checkpoint, frena antes y pide una decisión.
-        ahead = self.robot.obstacle_ahead(LIDAR_RANGE)
-        blocked = ahead is not None and self.distance + ahead - OBSTACLE_GAP < target_distance
-        if blocked and ahead - OBSTACLE_GAP <= 0.15:
+        # Humo o fuego por delante: no se acerca, corta la ronda y vuelve a la base.
+        if self.robot.smoke_ahead(SMOKE_RANGE) is not None:
             self.robot.hold()
-            self.state = "AWAITING_DECISION"
-            photo = self.robot.take_photo(f"{m.id}_{checkpoint_id}_obstaculo")
-            self._raise_alert("WARNING", "OBSTACLE", checkpoint_id, None, None, ["SKIP", "RETRY"], photo)
+            photo = self.robot.take_photo(f"{m.id}_{checkpoint_id}_humo")
+            self._resolve_decisions()
+            self.inspection_left = 0.0
+            m.interrupted = True
+            self.state = "RETURNING"
+            self._raise_alert("CRITICAL", "SMOKE_DETECTED", checkpoint_id, None, None, [], photo)
+            return
+        # Lo que tiene por delante y lo hace frenar: agua en el piso (cámara) o algo que bloquea (LiDAR).
+        stops = []
+        water = self.robot.water_ahead(CAMERA_RANGE)
+        if water is not None:
+            stops.append((water - WATER_GAP, "WATER_DETECTED"))
+        ahead = self.robot.obstacle_ahead(LIDAR_RANGE)
+        if ahead is not None:
+            stops.append((ahead - OBSTACLE_GAP, "OBSTACLE"))
+        stops = [(gap, code) for gap, code in stops if self.distance + gap < target_distance]
+        if stops:
+            gap, code = min(stops)
+            if gap <= 0.15:
+                self.robot.hold()
+                self.state = "AWAITING_DECISION"
+                if code == "WATER_DETECTED":
+                    photo = self.robot.take_photo(f"{m.id}_{checkpoint_id}_agua")
+                    self._raise_alert("CRITICAL", code, checkpoint_id, None, None, ["CONTINUE", "WATCH"], photo)
+                else:
+                    photo = self.robot.take_photo(f"{m.id}_{checkpoint_id}_obstaculo")
+                    self._raise_alert("WARNING", code, checkpoint_id, None, None, ["SKIP", "RETRY"], photo)
+                return
+            self.robot.go_to(self.distance + gap)
             return
         if self.distance >= target_distance - EPSILON:
             self.robot.hold()
             self.inspection_left = INSPECTION_SECONDS
             return
-        self.robot.go_to(self.distance + ahead - OBSTACLE_GAP if blocked else target_distance)
+        self.robot.go_to(target_distance)
 
     def _arrive_at_base(self):
         self.inspection_left = 0.0
@@ -169,7 +198,7 @@ class MissionControl:
             elif m.low_battery:
                 result = "INTERRUPTED_LOW_BATTERY"
             else:
-                result = "CANCELLED"
+                result = "INTERRUPTED"
             self._emit({"kind": "MISSION_FINISHED", "mission_id": m.id, "result": result,
                         "completed": m.inspected, "total": len(m.targets)})
         self.mission = None
@@ -207,17 +236,32 @@ class MissionControl:
             self.state = "ON_MISSION"
 
     def _evaluate(self, checkpoint_id, reading):
-        zone = self.site.checkpoints[checkpoint_id][1]
-        warning, critical = self.site.temperature_limits[zone]
+        """Las mismas reglas que la app: temperatura por zona, humedad dentro de un rango y ruido por
+        encima del de base. Devuelve (código, severidad, valor, umbral) por cada problema."""
+        site, issues = self.site, []
+        zone = site.checkpoints[checkpoint_id][1]
+        warning, critical = site.temperature_limits[zone]
         t = reading["temperature_c"]
         if t >= critical:
-            return [("TEMPERATURE_HIGH", "CRITICAL", t, critical)]
-        if t >= warning:
-            return [("TEMPERATURE_HIGH", "WARNING", t, warning)]
-        return []
+            issues.append(("TEMPERATURE_HIGH", "CRITICAL", t, critical))
+        elif t >= warning:
+            issues.append(("TEMPERATURE_HIGH", "WARNING", t, warning))
+        h = reading["humidity_pct"]
+        (low_warning, low_critical), (high_warning, high_critical) = site.humidity_low, site.humidity_high
+        if h <= low_critical or h >= high_critical:
+            issues.append(("HUMIDITY_OUT_OF_RANGE", "CRITICAL", h, low_critical if h < 50 else high_critical))
+        elif h <= low_warning or h >= high_warning:
+            issues.append(("HUMIDITY_OUT_OF_RANGE", "WARNING", h, low_warning if h < 50 else high_warning))
+        n, base = reading["noise_dba"], reading["noise_baseline_dba"]
+        noise_warning, noise_critical = site.noise_above
+        if n - base >= noise_critical:
+            issues.append(("NOISE_HIGH", "CRITICAL", n, base + noise_critical))
+        elif n - base >= noise_warning:
+            issues.append(("NOISE_HIGH", "WARNING", n, base + noise_warning))
+        return issues
 
     def _tick_watch(self, dt):
-        """Vigilar: repite la medición del punto cada tanto, sin moverse."""
+        """Vigilar una temperatura: repite la medición del punto cada tanto, sin moverse."""
         if self.watch_left <= 0 or self.last_reading is None:
             return
         self.watch_timer -= dt
@@ -301,8 +345,11 @@ class MissionControl:
             self._go_back()
             return True, None
         if name == "RETURN_TO_BASE":
+            # A diferencia de cancelar, la ronda queda interrumpida: lo inspeccionado vale.
             if self.state in ("AT_BASE", "RETURNING"):
                 return False, "INVALID_STATE"
+            if self.mission is not None:
+                self.mission.interrupted = True
             self._go_back()
             return True, None
         if name == "OPERATIONAL_STOP":
@@ -372,12 +419,16 @@ class MissionControl:
             return True, None
         if decision == "CONTINUE":
             self.watch_left = 0
+            if alert["code"] == "WATER_DETECTED":
+                self.robot.bypass_water()  # sigue, rodeando el agua sin pisarla
             self._resolve(alert)
             self.state = "RETURNING" if m.all_done else "ON_MISSION"
             return True, None
         if decision == "WATCH":
-            self.watch_left = WATCH_READINGS
-            self.watch_timer = WATCH_INTERVAL_SECONDS
+            # Se queda quieto mirando. Si es una temperatura, además repite la medición.
+            if alert["code"] == "TEMPERATURE_HIGH":
+                self.watch_left = WATCH_READINGS
+                self.watch_timer = WATCH_INTERVAL_SECONDS
             return True, None
         return False, "INVALID_STATE"
 

@@ -52,6 +52,11 @@ class Site:
             # zona -> (advertencia, crítico) en grados
             self.temperature_limits = {
                 zone: (float(l["warning"]), float(l["critical"])) for zone, l in thresholds["temperature"].items()}
+            # (advertencia, crítico): humedad baja y alta en %, ruido en dB(A) por encima del de base
+            self.humidity_low = (float(thresholds["humidity_low"]["warning"]), float(thresholds["humidity_low"]["critical"]))
+            self.humidity_high = (float(thresholds["humidity_high"]["warning"]), float(thresholds["humidity_high"]["critical"]))
+            self.noise_above = (float(thresholds["noise_above_baseline"]["warning"]),
+                                float(thresholds["noise_above_baseline"]["critical"]))
             simulation = raw["simulation"]
             self.humidity_pct = float(simulation.get("humidity_pct", 45.0))
             # zona -> (temperatura típica, ruido de base en dB(A))

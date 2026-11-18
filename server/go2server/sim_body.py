@@ -51,7 +51,7 @@ class KinematicBody:
         self.speed = 0.0
         self.forward = True
         self.obstacle_at = None
-        self.bypassing = False
+        self.bypassed = set()  # distancias del recorrido que el robot rodea (la caja, un charco)
 
     def set_goal(self, goal):
         self.goal = goal
@@ -76,19 +76,26 @@ class KinematicBody:
     def reset_at_base(self):
         self.distance = self.goal = self.speed = 0.0
         self.clear_obstacle()
+        self.bypassed.clear()
 
     def place_obstacle(self, distance):
-        self.obstacle_at, self.bypassing = distance, False
+        self.obstacle_at = distance
 
     def clear_obstacle(self):
-        self.obstacle_at, self.bypassing = None, False
+        self.bypassed.discard(self.obstacle_at)
+        self.obstacle_at = None
 
     def bypass_obstacle(self):
-        self.bypassing = self.obstacle_at is not None
+        if self.obstacle_at is not None:
+            self.bypass_point(self.obstacle_at)
+
+    def bypass_point(self, distance):
+        """Desde ahora, el camino rodea por un costado lo que hay en esa distancia del recorrido."""
+        self.bypassed.add(distance)
 
     def obstacle_ahead(self, lookahead):
         """Distancia al obstáculo sobre el camino, en el sentido de avance, o None si no hay nada."""
-        if self.obstacle_at is None or self.bypassing:
+        if self.obstacle_at is None or self.obstacle_at in self.bypassed:
             return None
         gap = (self.obstacle_at - self.distance) * (1 if self.forward else -1)
         return gap if 0 <= gap <= lookahead else None
@@ -157,8 +164,8 @@ class PhysicsBody(KinematicBody):
         super().clear_obstacle()
         self._hide_obstacle()
 
-    def bypass_obstacle(self):
-        super().bypass_obstacle()
+    def bypass_point(self, distance):
+        super().bypass_point(distance)
         # El desvío arranca desde donde frenó, no desde la referencia, que pudo quedar más cerca del obstáculo.
         self.reference = self.distance
 
@@ -330,8 +337,8 @@ class PhysicsBody(KinematicBody):
 
     def _path_point(self, distance):
         x, y = self.route.point_at(distance)
-        if self.bypassing and self.obstacle_at is not None:
-            offset = _bypass(distance, self.obstacle_at)
+        if self.bypassed:
+            offset = max(_bypass(distance, at) for at in self.bypassed)
             if offset:
                 heading = math.radians(self.route.heading_at(distance, True))
                 # Hacia la izquierda del sentido del recorrido (en el plano, y crece hacia abajo).

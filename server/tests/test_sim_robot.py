@@ -75,6 +75,29 @@ class SimulatedRobotTest(unittest.TestCase):
                                    and e["checkpoint_id"] != skipped for e in self.events))
         self.assertLess(self.tilt_deg(), 15)
 
+    def test_the_camera_sees_the_water_and_the_robot_walks_around_it_without_stepping_on_it(self):
+        self.make()
+        self.mission_control.handle("START_MISSION", {"mission": "FULL_ROUND"})
+        self.robot.trigger("WATER")
+        self.run_until(lambda: self.mission_control.state == "AWAITING_DECISION")
+        alert = self.mission_control.alerts[0]
+        self.assertEqual("WATER_DETECTED", alert["code"])
+        self.assertIsNotNone(alert["photo_id"])
+        self.mission_control.handle("INCIDENT_DECISION", {"alert_id": alert["id"], "decision": "CONTINUE"})
+        water = self.site.path.point_at(self.robot.water_at)
+        closest = float("inf")
+        for _ in range(120):
+            for _ in range(10):
+                self.body.frame(0.1)
+                x, y = self.body.position()
+                closest = min(closest, math.hypot(x - water[0], y - water[1]))
+            self.mission_control.tick(1.0)
+            if self.mission_control.mission.inspected:
+                break
+        self.assertEqual(1, self.mission_control.mission.inspected)
+        self.assertGreater(closest, 0.6)  # pasó por el costado del charco
+        self.assertLess(self.tilt_deg(), 15)
+
     def test_the_front_camera_takes_a_jpeg(self):
         from PIL import Image
         self.make()

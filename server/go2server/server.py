@@ -7,7 +7,7 @@ ronda, una vez por segundo. El corte de enlace (`corte`) simula la red, no el ro
 Mensajes (contrato del TP, no el protocolo oficial de Unitree):
   app -> servidor: command
   servidor -> app: site (al conectarse), telemetry (1 por segundo), alerts (cuando cambian), event,
-                   photo (la foto de la cámara frontal en un checkpoint o ante un obstáculo),
+                   photo (la foto de la cámara frontal en un checkpoint, o ante un obstáculo, agua o humo),
                    command_response
 """
 
@@ -21,19 +21,27 @@ import websockets
 
 from .sim_body import PhysicsBody
 from .mission_control import MissionControl
-from .sim_robot import SimulatedRobot
+from .sim_random import RandomSituations
+from .sim_robot import SCENARIOS, SimulatedRobot
 from .sim_scene import Scene
 
 ROBOT_ID = "go2-02"
 MAX_QUEUED_EVENTS = 500
 FRAME_SECONDS = 0.02  # 50 cuadros por segundo de física y de ventana
 
+RANDOM_LINK_CUT_SECONDS = 20
+
 HELP = """Comandos de consola:
   obstaculo      pone una caja en el pasillo, antes del próximo checkpoint
   despejar       saca la caja (después, "Reintentar" desde la app funciona)
+  agua           aparece agua en el piso, sobre el camino
+  humo           aparece un foco de fuego con humo al costado del camino
   temperatura    la próxima medición supera el umbral crítico
+  humedad        la próxima medición tiene la humedad alta
+  ruido          la próxima medición tiene ruido de más
   bateria        baja la batería al 31 % y la descarga más rápido
   corte [s]      corta el enlace con la app (60 s por defecto)
+  aleatorio      activa o desactiva las situaciones al azar durante la ronda
   velocidad N    multiplica el tiempo simulado (1 a 10)
   estado         muestra el estado del robot
   ayuda          muestra esta ayuda"""
@@ -54,6 +62,7 @@ class Go2Server:
         self.link_down_until = 0.0
         self.last_alerts = None
         self.marks = {}
+        self.random_situations = None  # con el modo aleatorio activo, un RandomSituations
 
     def link_up(self):
         return time.time() >= self.link_down_until
@@ -113,7 +122,29 @@ class Go2Server:
                 next_tick += 1.0
                 self.mission_control.set_link_available(self.link_up())
                 self.mission_control.tick(float(self.speed))
+                self.random_tick(float(self.speed))
                 self.publish()
+
+    def random_tick(self, dt):
+        control = self.mission_control
+        if self.random_situations is None or control.state != "ON_MISSION" or control.mission is None:
+            return
+        name = self.random_situations.tick(dt, control.mission.id)
+        if name is not None:
+            print(f"Situación aleatoria: {name}")
+            self.apply(name, [str(RANDOM_LINK_CUT_SECONDS)])
+
+    def apply(self, command, args):
+        """Provoca un escenario. Devuelve False si el comando no es un escenario."""
+        if command == "corte":
+            seconds = int(args[0]) if args else 60
+            self.link_down_until = time.time() + seconds
+            print(f"Enlace cortado durante {seconds} s")
+        elif command in SCENARIOS:
+            self.robot.trigger(SCENARIOS[command])
+        else:
+            return False
+        return True
 
     def publish(self):
         new_events = self.mission_control.drain_events()
@@ -168,19 +199,15 @@ class Go2Server:
             if not parts:
                 continue
             command, args = parts[0], parts[1:]
-            if command == "obstaculo":
-                self.robot.trigger("OBSTACLE")
-            elif command == "despejar":
-                self.robot.trigger("CLEAR_OBSTACLE")
-            elif command == "temperatura":
-                self.robot.trigger("HIGH_TEMPERATURE")
-            elif command == "bateria":
-                self.robot.trigger("LOW_BATTERY")
-            elif command == "corte":
-                seconds = int(args[0]) if args else 60
-                self.link_down_until = time.time() + seconds
-                print(f"Enlace cortado durante {seconds} s")
+            if command == "aleatorio":
+                self.random_situations = None if self.random_situations else RandomSituations()
+                print("Situaciones aleatorias " + ("activadas" if self.random_situations else "desactivadas"))
                 continue
+            if command == "corte":
+                self.apply(command, args)
+                continue
+            if self.apply(command, args):
+                pass
             elif command == "velocidad" and args:
                 self.speed = max(1, min(10, int(args[0])))
             elif command == "estado":
