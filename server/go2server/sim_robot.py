@@ -224,8 +224,11 @@ class SimulatedRobot(RobotInterface):
                 self._show("charco", self.site.path.point_at(at))
                 self.armed.discard("WATER")
         if "SMOKE" in self.armed and self.smoke_at is None:
+            # En el mismo tramo recto que el robot: cuando el sensor lo detecta, la cámara lo tiene adelante.
             at = here + min(6.0, gap * 0.8)
-            if gap > 2.0 and not self.site.on_stairs(*self.site.path.point_at(at), margin=-1.5):
+            route = self.site.path
+            straight = route.segment_index_at(here + 0.3) == route.segment_index_at(at + 0.5)
+            if at - here >= 5.0 and straight and not self.site.on_stairs(*route.point_at(at), margin=-1.5):
                 self.smoke_at = at
                 x, y = self.site.path.point_at(at)
                 heading = math.radians(self.site.path.heading_at(at, True))

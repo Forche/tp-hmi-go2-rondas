@@ -110,6 +110,18 @@ class SimulatedRobotTest(unittest.TestCase):
         self.run_until(lambda: self.mission_control.mission.inspected == 1)
         self.assertFalse(any(a["code"] == "SMOKE_DETECTED" for a in self.mission_control.alerts))
 
+    def test_the_smoke_photo_shows_the_fire(self):
+        # El foco aparece en el tramo recto que va recorriendo el robot: la cámara lo tiene adelante.
+        from PIL import Image
+        self.make()
+        self.mission_control.handle("START_MISSION", {"mission": "FULL_ROUND"})
+        self.robot.trigger("SMOKE")
+        self.run_until(lambda: self.mission_control.state == "RETURNING")
+        jpeg = next(j for pid, j in self.robot.drain_photos() if pid.endswith("_humo"))
+        pixels = Image.open(io.BytesIO(jpeg)).convert("RGB").getdata()
+        flame = sum(1 for r, g, b in pixels if r > 200 and 60 < g < 170 and b < 80)
+        self.assertGreater(flame, 100)
+
     def test_the_front_camera_takes_a_jpeg(self):
         from PIL import Image
         self.make()
