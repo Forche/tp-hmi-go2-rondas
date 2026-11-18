@@ -62,7 +62,7 @@ cd mujoco_menagerie && git sparse-checkout set unitree_go2
 
 En la consola se pueden provocar los escenarios: `obstaculo` (una caja sobre el próximo checkpoint: tapa el punto y el robot pide una decisión, E4), `caja` (una caja en el camino: el robot la rodea solo y avisa), `despejar` (saca la caja), `agua` (un charco sobre el camino), `humo` (un foco de fuego con humo al costado del camino), `temperatura`, `humedad`, `ruido` (la próxima medición sale de rango), `bateria`, `corte [s]`, `aleatorio` (activa o desactiva las situaciones al azar durante la ronda, `sim_random.py`), `velocidad N`, `estado`.
 
-Con la caja en el pasillo, *Reintentar* desde la app vuelve rechazada porque el LiDAR la sigue viendo; después de `despejar`, *Reintentar* se acepta y el robot sigue. Con *Saltear*, el robot rodea la caja por un costado. Al volver a la base la caja, el agua y el fuego se retiran.
+Con la caja en el pasillo, *Reintentar* desde la app vuelve rechazada porque el LiDAR la sigue viendo; después de `despejar`, *Reintentar* se acepta y el robot sigue. Con *Saltear*, el robot rodea la caja por un costado. Al volver a la base la caja, el agua y el fuego se retiran, y lo que se pidió y no llegó a aparecer se descarta. Lo que se pide con el robot en la base aparece en la próxima ronda.
 
 **Criterio:** si el robot puede resolver el problema solo, saca una foto, avisa y sigue: la caja en el camino y el charco los rodea, una medición fuera de rango la informa y ante humo vuelve a la base. Sólo pide una decisión cuando no puede medir: una caja sobre el checkpoint (E4).
 
