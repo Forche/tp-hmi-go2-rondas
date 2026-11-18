@@ -97,7 +97,8 @@ data class AlertDto(
     val threshold: Double? = null,
     @SerialName("requires_decision") val requiresDecision: Boolean,
     val options: List<String> = emptyList(),
-    val acknowledged: Boolean
+    val acknowledged: Boolean,
+    @SerialName("photo_id") val photoId: String? = null
 )
 
 /** Un solo tipo para los eventos: cada `kind` usa los campos que le corresponden. */
@@ -115,6 +116,15 @@ data class EventDto(
     val alert: AlertDto? = null,
     val result: String? = null,
     val completed: Int? = null
+) : ServerMessage
+
+/** Foto JPEG de la cámara frontal: la de un checkpoint inspeccionado o la de un obstáculo. */
+@Serializable
+@SerialName("photo")
+data class PhotoMessageDto(
+    @SerialName("photo_id") val photoId: String,
+    val timestamp: Long,
+    @SerialName("jpeg_base64") val jpegBase64: String
 ) : ServerMessage
 
 @Serializable

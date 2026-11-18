@@ -6,10 +6,12 @@ import ar.edu.uade.go2rondas.core.network.MujocoServerAddress
 import ar.edu.uade.go2rondas.data.mapper.toDomain
 import ar.edu.uade.go2rondas.data.mapper.toDto
 import ar.edu.uade.go2rondas.data.mapper.toOutcome
+import ar.edu.uade.go2rondas.data.photo.PhotoStore
 import ar.edu.uade.go2rondas.data.remote.dto.AlertsDto
 import ar.edu.uade.go2rondas.data.remote.dto.CommandDto
 import ar.edu.uade.go2rondas.data.remote.dto.CommandResponseDto
 import ar.edu.uade.go2rondas.data.remote.dto.EventDto
+import ar.edu.uade.go2rondas.data.remote.dto.PhotoMessageDto
 import ar.edu.uade.go2rondas.data.remote.dto.ServerMessage
 import ar.edu.uade.go2rondas.data.remote.dto.TelemetryDto
 import ar.edu.uade.go2rondas.data.remote.dto.SiteMessageDto
@@ -42,6 +44,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -58,6 +61,7 @@ class MujocoRobotDataSource @Inject constructor(
     private val client: OkHttpClient,
     @param:MujocoServerAddress val address: String,
     private val siteStore: SiteFileStore,
+    private val photoStore: PhotoStore,
     @param:ApplicationScope private val scope: CoroutineScope
 ) : RobotDataSource {
 
@@ -146,6 +150,7 @@ class MujocoRobotDataSource @Inject constructor(
             is EventDto -> message.toDomain()?.let { _events.emit(it) }
             is CommandResponseDto -> pending[message.commandId]?.complete(message.toOutcome())
             is SiteMessageDto -> onSiteReceived(message)
+            is PhotoMessageDto -> onPhotoReceived(message)
         }
     }
 
@@ -157,6 +162,17 @@ class MujocoRobotDataSource @Inject constructor(
         } catch (e: InvalidSiteException) {
             Log.w(TAG, "El robot mandó un mapa inválido: ${e.message}")
         }
+    }
+
+    /** Foto de la cámara del robot: se guarda para mostrarla en la alerta y en el historial. */
+    private fun onPhotoReceived(message: PhotoMessageDto) {
+        val jpeg = try {
+            Base64.getDecoder().decode(message.jpegBase64)
+        } catch (e: IllegalArgumentException) {
+            Log.w(TAG, "Foto inválida del robot: ${message.photoId}")
+            return
+        }
+        if (!photoStore.save(message.photoId, jpeg)) Log.w(TAG, "No se pudo guardar la foto ${message.photoId}")
     }
 
     private fun onSocketLost(webSocket: WebSocket) {

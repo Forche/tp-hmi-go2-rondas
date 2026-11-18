@@ -10,7 +10,9 @@ data class Alert(
     val threshold: Double?,
     val requiresDecision: Boolean,
     val decisionOptions: List<IncidentDecision>,
-    val acknowledged: Boolean
+    val acknowledged: Boolean,
+    /** Foto de la cámara del robot al momento de la alerta; null si el robot no tiene cámara. */
+    val photoId: String? = null
 )
 
 enum class AlertSeverity { INFO, WARNING, CRITICAL }

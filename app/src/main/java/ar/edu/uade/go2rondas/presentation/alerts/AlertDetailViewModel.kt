@@ -13,12 +13,14 @@ import ar.edu.uade.go2rondas.domain.model.IncidentDecision
 import ar.edu.uade.go2rondas.domain.model.RobotSnapshot
 import ar.edu.uade.go2rondas.domain.model.SiteConfig
 import ar.edu.uade.go2rondas.domain.usecase.EscalateIncidentUseCase
+import ar.edu.uade.go2rondas.domain.usecase.ObservePhotoUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveSiteConfigUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveRobotSnapshotUseCase
 import ar.edu.uade.go2rondas.domain.usecase.SendCommandUseCase
 import ar.edu.uade.go2rondas.presentation.common.CommandFeedback
 import ar.edu.uade.go2rondas.presentation.common.report
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,6 +28,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -35,7 +39,9 @@ data class AlertDetailData(
     val snapshot: RobotSnapshot,
     val site: SiteConfig,
     /** null si la alerta ya no está en la sesión del robot. */
-    val alert: Alert?
+    val alert: Alert?,
+    /** Archivo de la foto de la cámara del robot, si la mandó. */
+    val photoPath: String? = null
 )
 
 sealed interface AlertDetailUiEffect {
@@ -43,11 +49,13 @@ sealed interface AlertDetailUiEffect {
     data object Escalated : AlertDetailUiEffect
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AlertDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     observeRobotSnapshot: ObserveRobotSnapshotUseCase,
     observeSiteConfig: ObserveSiteConfigUseCase,
+    observePhoto: ObservePhotoUseCase,
     private val sendCommand: SendCommandUseCase,
     private val escalateIncident: EscalateIncidentUseCase
 ) : ViewModel() {
@@ -55,9 +63,14 @@ class AlertDetailViewModel @Inject constructor(
     // El id llega como argumento de la ruta; SavedStateHandle lo conserva si el proceso muere.
     private val alertId: String = checkNotNull(savedStateHandle[Screen.AlertDetail.ARG_ALERT_ID])
 
+    private val alertPhoto = observeRobotSnapshot()
+        .map { snapshot -> snapshot.alerts.firstOrNull { it.id == alertId } }
+        .distinctUntilChanged { a, b -> a?.photoId == b?.photoId }
+        .flatMapLatest { observePhoto.ofAlert(it) }
+
     val uiState: StateFlow<UiState<AlertDetailData>> =
-        combine(observeRobotSnapshot(), observeSiteConfig()) { snapshot, site ->
-            AlertDetailData(snapshot, site, snapshot.alerts.firstOrNull { it.id == alertId })
+        combine(observeRobotSnapshot(), observeSiteConfig(), alertPhoto) { snapshot, site, photo ->
+            AlertDetailData(snapshot, site, snapshot.alerts.firstOrNull { it.id == alertId }, photo)
         }
             .map<AlertDetailData, UiState<AlertDetailData>> { UiState.Success(it) }
             .catch { emit(UiState.Error(it.message ?: "Error")) }

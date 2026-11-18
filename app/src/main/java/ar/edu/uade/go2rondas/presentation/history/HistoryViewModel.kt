@@ -12,12 +12,14 @@ import ar.edu.uade.go2rondas.domain.model.SiteConfig
 import ar.edu.uade.go2rondas.domain.usecase.ObserveSiteConfigUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveMissionDetailUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveMissionHistoryUseCase
+import ar.edu.uade.go2rondas.domain.usecase.ObservePhotoUseCase
 import ar.edu.uade.go2rondas.domain.usecase.ObserveRobotSnapshotUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
@@ -54,11 +56,17 @@ class MissionSummaryViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     observeRobotSnapshot: ObserveRobotSnapshotUseCase,
     observeSiteConfig: ObserveSiteConfigUseCase,
-    observeMissionDetail: ObserveMissionDetailUseCase
+    observeMissionDetail: ObserveMissionDetailUseCase,
+    observePhoto: ObservePhotoUseCase
 ) : ViewModel() {
 
     private val missionId: String = checkNotNull(savedStateHandle[Screen.MissionSummary.ARG_MISSION_ID])
     val checkpointId: String? = savedStateHandle[Screen.CheckpointDetail.ARG_CHECKPOINT_ID]
+
+    /** Foto de la cámara del robot en este checkpoint (sólo el robot de MuJoCo saca fotos). */
+    val checkpointPhoto: StateFlow<String?> =
+        (checkpointId?.let { observePhoto.ofCheckpoint(missionId, it) } ?: flowOf(null))
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val uiState: StateFlow<UiState<MissionSummaryData>> =
         combine(observeRobotSnapshot(), observeSiteConfig(), observeMissionDetail(missionId)) { snapshot, site, detail ->
